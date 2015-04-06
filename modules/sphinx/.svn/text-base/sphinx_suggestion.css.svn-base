@@ -1,0 +1,4 @@
+/* $Id: sphinx_suggestion.css,v 1.2.2.1 2009/02/25 17:40:28 johsw Exp $ */
+.sphinx-suggestion {
+	font-size:12px;
+}

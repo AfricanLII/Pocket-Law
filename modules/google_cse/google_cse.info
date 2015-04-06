@@ -1,0 +1,10 @@
+name = "Google CSE"
+description = "Use a Google Custom Search Engine to search your site and/or any other sites."
+core = 6.x
+
+; Information added by drupal.org packaging script on 2011-02-25
+version = "6.x-1.x-dev"
+core = "6.x"
+project = "google_cse"
+datestamp = "1298619350"
+

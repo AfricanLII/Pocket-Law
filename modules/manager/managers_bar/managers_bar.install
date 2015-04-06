@@ -1,0 +1,23 @@
+<?php
+// $Id: managers_bar.install,v 1.1.2.1 2009/12/17 08:18:12 lourenzo Exp $
+
+/**
+ * @file
+ * Manager's Bar Module Installation file
+ */
+
+/**
+ * Implementation of hook_install().
+ */
+function managers_bar_install() {
+
+}
+
+
+/**
+ * Implementation of hook_uninstall().
+ * @todo list all variables
+ */
+function managers_bar_uninstall() {
+
+}

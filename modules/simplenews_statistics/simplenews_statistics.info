@@ -1,0 +1,14 @@
+name = "Simplenews Statistics"
+description = "Gathers newsletter statistics"
+dependencies[] = shorturl
+dependencies[] = simplenews
+dependencies[] = views
+package = Mail
+core = 6.x
+
+; Information added by drupal.org packaging script on 2013-01-13
+version = "6.x-3.0-alpha5"
+core = "6.x"
+project = "simplenews_statistics"
+datestamp = "1358102600"
+

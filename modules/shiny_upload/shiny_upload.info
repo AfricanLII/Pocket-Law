@@ -1,0 +1,4 @@
+; $Id$
+name = shiny_upload
+description = displays file attachements nicely
+core = 6.x

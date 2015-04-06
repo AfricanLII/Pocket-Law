@@ -1,0 +1,31 @@
+8
+
+dir
+83
+svn+ssh://datastore.law.cornell.edu/datastore/svnrepo/drupal/trunk/sites/all/modules/lii/sphinx/includes
+svn+ssh://datastore.law.cornell.edu/datastore/svnrepo
+
+
+
+2010-01-13T17:23:20.068292Z
+80
+brian
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+66ce833e-07de-4030-bad9-a1680ea75f4c
+
+api
+dir
+

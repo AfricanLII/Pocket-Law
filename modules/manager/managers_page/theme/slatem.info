@@ -1,0 +1,21 @@
+; $Id: slatem.info,v 1.1.2.2 2009/11/12 18:42:43 franz Exp $
+name = "Slate M"
+description = "Slate M theme. Provided/managed by the manager module. Modified version of Admin module's Slate"
+version = "0.1"
+core = "6.x"
+base theme = garland
+engine = "phptemplate"
+
+; stylesheets[screen][] = "reset.css"
+; stylesheets[print][] = "style.css"
+; stylesheets[screen][] = "ie6.css"
+
+stylesheets[all][] = "slatem.css"
+
+
+; Information added by drupal.org packaging script on 2010-05-25
+version = "6.x-1.0-rc3"
+core = "6.x"
+project = "manager"
+datestamp = "1274809207"
+

@@ -1,0 +1,10 @@
+node_image.module
+INSTALL
+
+Installation
+------------
+
+1. Copy the file highlight.module into your modules directory.
+
+2. Go to "modules" under in the administration pages and enable
+   the module.

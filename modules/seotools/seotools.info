@@ -1,0 +1,57 @@
+core = "6.x"
+package = SEO
+dependencies[] = "presets"
+dependencies[] = "strongarm"
+description = "Provides assortment of tools for improving search engine rankings."
+features[ctools][] = "strongarm:strongarm:1"
+features[variable][] = "googleanalytics_cache"
+features[variable][] = "googleanalytics_segmentation"
+features[variable][] = "googleanalytics_trackfiles"
+features[variable][] = "googleanalytics_trackfiles_extensions"
+features[variable][] = "googleanalytics_trackmailto"
+features[variable][] = "googleanalytics_trackoutgoing"
+features[variable][] = "googleanalytics_visibility"
+features[variable][] = "xmlsitemap_batch_limit"
+features[variable][] = "xmlsitemap_chunk_size"
+features[variable][] = "xmlsitemap_engines_engines"
+features[variable][] = "xmlsitemap_engines_minimum_lifetime"
+features[variable][] = "xmlsitemap_frontpage_changefreq"
+features[variable][] = "xmlsitemap_frontpage_priority"
+features[variable][] = "xmlsitemap_minimum_lifetime"
+features[variable][] = "xmlsitemap_prefetch_aliases"
+features[variable][] = "xmlsitemap_xsl"
+name = "SEO Tools"
+; Information added by drupal.org packaging script on 2011-01-05
+version = "6.x-1.0-beta5"
+core = "6.x"
+project = "seotools"
+datestamp = "1294266759"
+
+
+; Information added by drupal.org packaging script on 2011-02-28
+version = "6.x-1.0-rc1"
+core = "6.x"
+project = "seotools"
+datestamp = "1298855771"
+
+
+; Information added by drupal.org packaging script on 2011-03-06
+version = "6.x-1.0-rc2"
+core = "6.x"
+project = "seotools"
+datestamp = "1299415568"
+
+
+; Information added by drupal.org packaging script on 2011-05-21
+version = "6.x-1.0-rc3"
+core = "6.x"
+project = "seotools"
+datestamp = "1306004817"
+
+
+; Information added by drupal.org packaging script on 2011-08-20
+version = "6.x-1.0-rc6"
+core = "6.x"
+project = "seotools"
+datestamp = "1313818621"
+

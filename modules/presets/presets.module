@@ -1,0 +1,126 @@
+<?php
+
+/**
+ * @file
+ */
+
+/**
+ *  Implementation of hook_menu()
+ *  
+ */
+function presets_menu() {
+  $items = array();
+  $items['admin/presets'] = array(
+    'title' => 'Presets',
+    'description' => 'View module presets.',
+    'position' => 'right',
+    'weight' => -5,
+    'page callback' => 'presets_overview',
+    'access arguments' => array('administer presets'),
+    'file' => 'presets.admin.inc',
+  );
+  $presets = presets_get_presets();
+  foreach($presets as $preset => $info) {
+    $items['admin/presets/' . $preset] = array(
+      'title' => $info['title'],
+      'description' => $info['description'],
+      'page callback' => 'presets_page',
+      'page arguments' => array(2),
+      'access arguments' => array('administer presets'),
+      'file' => 'presets.admin.inc',
+    );
+  }
+  $items['admin/presets/settings/%/%/%'] = array(
+    'title' => 'Do settings changes',
+    'page callback' => 'presets_reset_callback',
+    'page arguments' => array(3, 4, 5),
+    'access arguments' => array('administer presets'),
+    'file' => 'presets.admin.inc',
+  );
+  $items['admin/presets/%/reset'] = array(
+    'title' => 'Reset',
+    'page callback' => 'presets_reset_all',
+    'page arguments' => array(2),
+    'access arguments' => array('administer presets'),
+    'file' => 'presets.admin.inc',
+  );
+  return $items;
+}
+
+/**
+ * Implementation of hook_perm()
+ */
+function presets_perm() {
+  return array('administer presets');
+}
+
+/**
+ * Function to get presets.
+ *
+ * @staticvar <type> $presets
+ * @param <type> $reset
+ * @return <type>
+ */
+function presets_get_presets($reset = FALSE) {
+  static $presets;
+  if (!isset($presets) || $reset) {
+    if (!$reset && $cache = cache_get('presets')) {
+      $presets = $cache->data;
+    }
+    else {
+      $presets = module_invoke_all('presets');
+      // Ensure that we are supposed to be calling this.
+      foreach($presets as $id => $preset) {
+        if ($preset['version'] != 1) {
+          unset($presets[$id]);
+        }
+      }
+      drupal_alter('presets', $presets);
+      cache_set('presets', $presets);
+    }
+  }
+  return $presets;
+}
+
+/**
+ * Implementation of hook_form_alter().
+ *
+ * @param <type> $form
+ * @param <type> $form_state
+ * @param <type> $form_id
+ */
+function presets_form_alter($form, $form_state, $form_id) {
+  if ($form_id == 'system_modules') {
+    if (empty($form_state['post']) && !$form_state['submitted']) {
+      // On the module enable page, set a message with a shortcut to enable recommended modules.
+      include_once(drupal_get_path('module', 'presets') . '/presets.admin.inc');
+      $output = '';
+      $js = '';
+	  $modules = presets_disabled_modules();
+	  if(is_array($modules)) {
+		  foreach($modules as $module => $name) {
+			$output .= "<div>$name ($module)</div>";
+			$js .= "$('input#edit-status-" . str_replace('_', '-', $module) . "').attr('checked', 'checked');";
+		  }
+	  }
+      if ($output) {
+        $output .= '<div><input type="button" value="Enable Recommended Modules" onclick="' . $js . '$(\'form#system-modules input#edit-submit\').click();"></div>';
+        if ($form_id == 'system_modules') {
+          drupal_set_message('<div>Presets recommends that you install the following modules.</div>' . $output);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function presets_theme() {
+  return array(
+    'presets_report' => array(
+      'arguments' => array('settings' => NULL),
+      'file' => 'presets.admin.inc',
+    ),
+  );
+}

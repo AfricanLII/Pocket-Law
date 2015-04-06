@@ -1,0 +1,195 @@
+<?php
+include 'preg_find.php';
+
+function caseimport_help($path, $arg) {
+  $output = '';  //declare your output variable
+  switch ($path) {
+    case "admin/help#caseimport":
+      $output = '<p>'.  t("bulk imports case law") .'</p>';
+      break;
+  }
+  return $output;
+} // function caseimport_help
+
+/**
+ * Implementation of hook_theme().
+ */
+function caseimport_theme($path, $args) {
+  return array(
+    'indexpage_term' => array(
+      'arguments' => array('term', 'type'),
+      ),
+    );
+}
+
+/**
+
+/**
+* Valid permissions for this module
+* @return array An array of valid permissions for the onthisdate module
+*/
+function caseimport_perm() {
+  return array('access caseimport', 'create caseimport', 'administer caseimport');
+} // function caseimport_perm()
+
+function caseimport_menu() {
+$items = array();
+
+//Link to the propertydata_import admin page:
+$items['admin/caseimport'] = array(
+'title' => 'Import case data into Drupal',
+'description' => 'Import case data into Drupal',
+'page callback' => 'caseimport_callback',
+'access arguments' => array('administer caseimport'),
+'type' => MENU_NORMAL_ITEM,
+);
+
+/*$items['admin/settings/caseimport'] = array(
+      'title' => 'CaseImport',
+      'description' => 'CaseImport settings.',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('caseimport_admin_settings'),
+      'access arguments' => array('administer site configuration'),
+      'type' => MENU_NORMAL_ITEM,
+      'file' => 'caseimport.admin.inc',
+      );
+*/
+return $items;
+}
+
+function get_string_between($string, $start, $end){
+        $string = " ".$string;
+        $ini = strpos($string,$start);
+        if ($ini == 0) return "";
+        $ini += strlen($start);
+        $len = strpos($string,$end,$ini) - $ini;
+        return substr($string,$ini,$len);
+}
+
+function caseimport_callback() {
+  // what user id should the files be imported as?
+    $uid = 1;
+
+    // prevent this from running under apache:
+//    if (array_key_exists('REQUEST_METHOD', $_SERVER)) {
+ //       echo 'nope.  not executing except from the command line.';
+  //      exit(1);
+   // }
+
+    // set HTTP_HOST or drupal will refuse to bootstrap
+    $_SERVER['HTTP_HOST'] = 'www.swazilii.org';
+    include_once 'includes/bootstrap.inc';
+    drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+
+    // create a user that will be the author of the files/nodes
+    // created
+
+    global $user;
+    $user = user_load($uid);
+
+// loop through saflii_import directory looking for rtf and pdf files to extract mnc
+if ($handle = opendir('/var/www/drupal-multisite/files/sz/saflii_imports')) {
+	echo "Directory handle: $handle\n";
+	echo "Files:\n";
+
+	while (false !== ($file = readdir($handle))) {
+		echo "$file\n";
+		$fullfilename = "/var/www/drupal-multisite/files/sz/saflii_imports/" . $file;
+		list($filename, $ext) = explode(".", $file);
+		list($court, $year, $jno) = explode("_", $filename);
+		$mnc = "[" . $year . "] " . $court . " " .$jno;
+		switch ($court) {
+                case "SZHC":
+                $courtname = "High Court";
+                $cname = "high-court";
+                break;
+                case "SZSC":
+                $courtname = "Supreme Court";
+                $cname = "supreme-court";
+                break;
+                case "SZIC":
+                $courtname = "Industrial Court";
+                $cname = "industrial-court";
+                break;
+                case "SZICA":
+                $courtname = "Industrial Court of Appeal";
+                $cname = "industrial-court-appeal";
+                break;
+        }
+
+		$sql = "select vid, nid, field_mnc_value from content_field_mnc where field_mnc_value like \"%$mnc%\"";
+		$type = 'strapline';
+		$limit = 1;
+		$query = db_query($sql, $type, $limit);   
+while ($row = db_fetch_array($query)) { // this returns the row as an array, use db_fetch_object to get an object
+	$vid = $row['vid'];
+	$nid = $row['nid'];
+  echo "$vid ";
+  echo "$nid ";
+  echo $row['field_mnc_value'];
+	$importfilesize = filesize($fullfilename);
+	$dest = "/var/www/drupal-multisite/sites/www.swazilii.org/files";
+	$target = "sz/judgment/" . $cname . "/" . $year . "/" . $jno . "/";
+	echo "$target\n";
+	// if new directory path does not exist, create it
+	$new_dir_path = $dest . "/" . $target;
+	if(!file_check_directory($new_dir_path, $mode = FILE_CREATE_DIRECTORY))
+	{
+		echo "failed to create directory: $new_dir_path\n";
+	}
+	else
+	{
+		echo "created directory: $new_dir_path\n";
+	}
+
+	echo "file name: $fullfilename\n";
+	// copy the file to the Drupal files directory
+	if(!file_copy($fullfilename, $target)) {
+		echo "failed to move file: $fullfilename\n";
+	      return;
+        } else {
+                echo "copied file: $file.\n";
+        // file_move might change the name of the file
+                $fname = basename($file);
+        }
+ 	
+	$newfile = new stdClass();
+        $newfile->filename = $fname;
+        $newfile->filepath = $target .$fname;
+        $newfile->filemime = file_get_mimetype($fname);
+        $newfile->filesize = $importfilesize;
+        $newfile->filesource = $fname;
+        $newfile->uid = 1;
+        $newfile->status = FILE_STATUS_TEMPORARY;
+        $newfile->timestamp = time();
+        $newfile->list = 1;
+        $newfile->description = $fname;
+        $newfile->new = true;
+
+        drupal_write_record('files', $newfile);
+        file_set_status($newfile,1);
+ //       $node->files[$newfile->fid] = $newfile;
+	$uploaddata = array(
+		'fid' => $newfile->fid,
+		'nid' => $nid,
+		'vid' => $vid,
+		'description' => $fname,
+		'list' => 1);
+	drupal_write_record('upload', $uploaddata);
+
+//	$upload = "insert into upload (fid, nid, vid, description, list) values ($newfile->fid, $nid, $vid, \"$fname\", 1)";
+//	echo "$upload";
+
+
+
+}
+//		echo "$query\n";
+	}
+closedir($handle);
+}
+
+// then select id, vid from content_type_caselaw where the mnc found in the saflii_import directory matches the mnc in the database
+
+// insert the files relating to that mnc with id, vid as found
+
+}

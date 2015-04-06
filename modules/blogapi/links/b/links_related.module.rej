@@ -1,0 +1,20 @@
+--- a/links_related.module
++++ b/links_related.module
+@@ -207,7 +207,7 @@
+ }
+ 
+ function links_related_form_alter(&$form, $form_state, $form_id) {
+-  $node = $form['#node'];
++  $node = isset($form['#node']) ? $form['#node'] : NULL;
+   switch ($form_id) {
+     case 'node_type_form':
+       // Nodetype-specific settings
+@@ -232,7 +232,7 @@
+       $form['delete']['#weight'] = 17;
+       break;
+ 
+-    case $node->type .'_node_form':
++    case (isset($node) ? $node->type .'_node_form' : ''):
+       // The actual node edit form. This allows the users to enter the
+       // links_related into appropriate node types' edit screens.
+       if (variable_get('links_related_types_'.$node->type, 0)) {

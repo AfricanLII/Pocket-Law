@@ -1,0 +1,104 @@
+<?php
+/**
+ * @file
+ * This module can export and import datasets.
+ *
+ * It will have several clearly defined sections and will be
+ * extended by  plugins or include files.
+ *
+ * The sections are:
+ * Help
+ * Permissions
+ * hook_menu
+ * calbacks
+ * forms
+ * submit
+ * validation
+ */
+
+// Here we will loop through the profile files and include them so
+// their functions are available.
+$directory = drupal_get_path('module', 'data_export_import') . '/includes/profiles';
+$mask = '.\.inc$';
+$files = file_scan_directory($directory, $mask);
+
+foreach ($files as $file) {
+
+  module_load_include('inc', 'data_export_import', 'includes/profiles/' . $file->name);
+}
+
+/**
+ * Implements hook_help().
+ */
+function data_export_import_help($path, $arg) {
+
+  $output = '';
+
+  switch ($path) {
+    case "admin/help#data_export_import":
+      $output = '<p>' . t("Exports datasets as files which can then imported into other Drupal instances.") . '</p>';
+      break;
+  }
+  return $output;
+}
+
+/**
+ * Implements hook_perm().
+ */
+function data_export_import_perm() {
+  return array('access data export import');
+}
+
+/**
+ * Implements hook_menu().
+ */
+function data_export_import_menu() {
+
+  $items = array();
+
+  $items['admin/content/data_export_import'] = array(
+    'title' => 'Data export import',
+    'page callback' => 'data_export_import_callback_overview',
+    'access arguments' => array('access data export import'),
+    'description' => 'Data export import',
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  // This 'tab' inherits from MENU_NORMAL_ITEM
+  $items['admin/content/data_export_import/overview'] = array(
+    'title' => 'Overview',
+    'weight' => 0,
+    'description' => 'Data export import introduction',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+
+  // Here we will loop through the profile files and call funtions
+  // which will add the items to the menu.
+  $directory = drupal_get_path('module', 'data_export_import') . '/includes/profiles';
+  $mask = '.\.inc$';
+  $files = file_scan_directory($directory, $mask);
+
+  foreach ($files as $file) {
+
+    module_load_include('inc', 'data_export_import', 'includes/profiles/' . $file->name);
+
+    $function_to_run = "data_export_import_" . $file->name . "_add_items_to_menu";
+    $function_to_run($items);
+  }
+
+  return $items;
+}
+
+/**
+ * Callback function for the overview tab.
+ *
+ * @return string
+ *   Initial overview text and basic instructions.
+ */
+function data_export_import_callback_overview() {
+
+  // This is a simple display of some instructions.  The main point of
+  // having this standard initial tab is to have a default tab - the
+  // tabs provided by the profiles are then added as extra tabs.
+  return t("Please click on one of the profile tabs to export or import data.");
+}

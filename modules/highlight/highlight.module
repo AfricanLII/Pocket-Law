@@ -1,0 +1,306 @@
+<?php
+
+
+/* This module creates a link on search results pages and if highlighting is 
+   enabled for the field (check your input types), it will search and replace
+   the search term in that field with an admin defined string 
+*/
+
+
+/*
+ * @TODO add back the "first,second,third" functionality into the replace function
+ * @TODO add admin options for the set message function that the 4.6 version had
+ */
+
+
+/* *********************************************** */
+/* Drupal Hooks */
+/* *********************************************** */
+
+/**
+ * Implementation of hook_help
+ */
+function highlight_help($section) {
+  switch ($section) {
+    case 'admin/help#highlight':
+      return highlight_filter_tips(0, 0, TRUE);
+  }
+}
+
+/**
+ * Implementation of hook_menu
+ */
+function highlight_menu(){
+  $items['admin/settings/highlight'] = array(
+    'title' => t('Highlight'),
+    'description' => t('Configure the highlight module'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('highlight_admin_settings'),
+    'access arguments' => array('administer highlight'),
+    'type' => MENU_NORMAL_ITEM,
+   );	
+  return $items;	
+}
+
+
+/**
+ * Implementation of hook_perm
+ */
+function highlight_perm() {
+  return array('administer highlight');
+} 
+
+/**
+ * Implementation of admin settings
+ */
+function highlight_admin_settings(){
+  $form['highlight'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Search Highlight Configuration'),
+  );
+/*Maybe TODO
+  $form['highlight']['hl_replace'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Replacement string'),
+    '#default_value' => variable_get('hl_replace', '<strong id="keyword" class="highlight">$1</strong>'),
+    '#description' => t('This string will be used to replace the found value <strong>key</strong> with. <strong>$1</strong> is variable.'),
+  );
+*/
+
+/*TODO
+   $form['highlight']['hl_allow_external'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Allow external sites to highlight'),
+    '#default_value' => variable_get('hl_allow_external', false),
+    '#description' => t('If this is checked, sites out side of yours will be able to highlight items on your site. <br /> <em>Defaults to off</em>'),
+  );
+*/
+  $form['highlight']['hl_use_css'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Use Module CSS'),
+    '#default_value' => variable_get('hl_use_css', true),
+    '#description' => t('If you have customized your CSS for the <em>highlight</em> class, uncheck this box to prevent the module from overriding your CSS.'),
+  );
+  $form['highlight']['hl_use_js'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Use Javascript to highlight'),
+    '#default_value' => variable_get('hl_use_js', true),
+    '#description' => t('Uses Javascript to highligh on the client side (faster but not work on browsers without javascript support like mobile browers).'),
+  );
+/*TODO
+  $form['highlight']['hl_use_anchor'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Auto jump to destination anchor of the keyword'),
+    '#default_value' => variable_get('hl_use_anchor', false),
+    '#description' => t('Auto jump to destination anchor of the keyword.'),
+  ); 
+*/
+  return system_settings_form($form);
+}
+
+
+// This is the old highlight function, replacing this with the filter version
+/*
+function highlight_nodeapi(&$node, $op, $teaser = NULL, $page = NULL) {
+  static $message_given = false;
+  switch ($op) {
+    case 'view':
+      if (!empty($_REQUEST['highlight'])) {
+        $highlights = explode(',', $_REQUEST['highlight']);
+        $count = 0;
+        foreach ($highlights as $highlight) {
+          if($highlight != '') {    
+            if ($count == 3) {
+              break;
+            }
+            if (stristr($node->body, $highlight) || stristr($node->title, $highlight)) {
+              $key[] = $highlight;
+              $key[] = ucfirst($highlight);
+              $found[] = '<strong class="highlight' . $count . '">' . $highlight . '</strong>';
+              $replace[] = '<strong class="highlight' . $count . '">' . $highlight . '</strong>';
+              $replace[] = '<strong class="highlight' . $count . '">' . ucfirst($highlight) . '</strong>';
+              $count++;
+            }
+          }
+        }
+        if (count($key) > 0) {
+          $node->body = str_replace($key, $replace, $node->body);
+          $node->title = str_replace($key, $replace, $node->title);
+          if(!($message_given)) {
+            $message = count($key) > 1 ? t('The following terms have been highlighted: ') : t('The following term has been highlighted: ');
+            drupal_set_message($message . implode(' ', $found));
+            $message_given = true;
+            highlight_set_css();
+          }
+        }
+      }      
+  }
+}
+*/
+
+/**
+ * Implemnatation of highlight 
+ */
+function highlight_filter_tips($delta, $format, $long = FALSE) {
+  switch ($delta){ 
+    case 0:
+      switch ($long) {
+        case 0:
+          return t('Highlight terms in this textarea.');
+      }
+  }
+}
+
+
+/**
+ * Implementation of hook_filter
+ */
+function highlight_filter($op, $delta = 0, $format = -1, $text = '') {
+  $use_js = variable_get('hl_use_js', true);
+  // list filters
+  if ($op == 'list') {
+    return array(
+      0 => t('Highlight search results'));
+  }
+
+  if ($op == "description"){
+  	return t("Highlight search terms in this content area");
+  }
+
+  // All operations besides "list" provide a $delta argument so we know which
+  switch ($delta) {
+    // First we define the simple string substitution filter.
+    case 0:
+      switch ($op) {
+      	
+      	// no caching
+        case 'no cache':
+          if ($use_js) {
+            return FALSE;
+          } 
+          else {
+            return TRUE;
+          }
+      	
+      	// describe the filter
+        case 'description':
+          return t('Highlights search terms in the text.');
+
+        // We don't need the "prepare" operation for this filter, but it's required
+        // to at least return the input text as-is.
+        case 'prepare':
+          return $text;
+
+        // process the filter        
+        case 'process':
+          $keywords = highlight_keywords(); 
+          if (empty($keywords) == false) {
+            return highlight_process($text, $keywords);
+          } 
+          else {
+            return $text;
+          }
+      }
+      break;
+  }
+} 
+
+/* *********************************************** */
+/* Module functions */
+/* *********************************************** */
+
+
+/**
+ * controls the conditions for displaying highlights
+ * returns true if highlight should be active, false otherwise
+ * 
+ */
+function highlight_keywords(){
+  global $base_url;
+  static $allow_external_highlight;
+  $allow_external_highlight = variable_get('hl_allow_external', false);
+
+  // we don't need to check the url if we allow external highlights
+/*  if ($allow_external_highlight) {
+  	$referer_is_local = true; 
+  } 
+*/
+
+  // parse the referring url to make sure it's local
+  if (variable_get('clean_url', 0)) {
+    $search_url = $base_url . '/search/';
+  } 
+  else {
+    $search_url = $base_url.'/?q=search/';
+  };
+
+  if (strpos($_SERVER['HTTP_REFERER'], $search_url) === 0 ){ 
+    $referer_is_local = true;
+    $keywords = end(explode("/",(urldecode ($_SERVER['HTTP_REFERER']))));
+    return (explode(" ", $keywords));
+  } 
+  else {
+  	return null;
+  }
+}
+
+/**
+ * Takes input text and a key and replaces all instances of the 
+ * key in the text with highlight code
+ */
+function highlight_process($text, $keys = '') {
+//  static $replace_text, $use_css;
+//  $replace_text = variable_get('hl_replace', '<strong id="keyword" class="highlight">$1</strong>');
+  $use_js = variable_get('hl_use_js', true);
+  $use_css = variable_get('hl_use_css', true);
+  $use_anchor = variable_get('hl_use_anchor', true);
+
+  // add css to header
+  if($use_css) {
+    highlight_set_css(); 
+  }
+  
+  if ($use_js) {
+    drupal_add_js('misc/jquery.js');
+    drupal_add_js(drupal_get_path('module', 'highlight').'/js/jquery.highlight.js', 'module');
+    foreach($keys as $key) {
+//      drupal_add_js('alert("'.$key.'")', 'inline');
+      drupal_add_js('$("*").highlight("' . $key . '")', 'inline', 'footer');
+    }
+  }
+  else {
+    foreach($keys as $key) {
+      $replacement[] = str_replace("$1", " " . $key . " ", '<span class="highlight">$1</span>');
+    }
+    $text = str_ireplace($keys, $replacement, $text);//TODO: no case sensitive now.
+  }
+/*TODO
+  if ($use_anchor) {
+    drupal_add_js('window.location="#keyword";', 'inline', 'footer');
+  }
+*/
+  return $text;
+}
+
+
+/**
+ * adds css to page when highlight is present
+ * do only once 
+ */
+function highlight_set_css() {
+ static $has_displayed;
+ if (!($has_displayed)){	
+  drupal_set_html_head("
+  <style>
+  .highlight {
+    background-color: yellow;
+  }
+  </style>
+  ");
+ }
+ $has_displayed = true;
+}
+/*
+function highlight_init() {
+}
+*/

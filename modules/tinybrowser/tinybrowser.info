@@ -1,0 +1,4 @@
+name = TinyBrowser
+description = File browser/uploader for WYSIWYG editors.
+core = 6.x
+version = 6.x-1.x

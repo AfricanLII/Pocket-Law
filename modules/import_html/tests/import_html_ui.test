@@ -1,0 +1,105 @@
+<?php
+
+/**
+ * @file
+ * Tests for The UI pages for Import HTML.
+ */
+
+
+/**
+ * Test basic Feeds UI functionality.
+ */
+class ImportHtmlUserInterfaceTestCase extends DrupalWebTestCase {
+
+  /**
+   * Describe this test.
+   */
+  public function getInfo() {
+    return array(
+      'name' => t('Import HTML user interface'),
+      'description' => t('Tests Import HTML UI and forms. Adding and updating settings through the GUI.'),
+      'group' => t('Import HTML'),
+    );
+  }
+
+  /**
+   * Set up test.
+   */
+  public function setUp() {
+    parent::setUp('import_html', 'path', 'menu');
+    // Create and log in our test user.
+    $user = $this->drupalCreateUser(array(
+      'administer site configuration', 
+      'access import_html', 
+      'administer menu', 
+      'create url aliases', 
+      'administer url aliases'
+    ));
+    $this->drupalLogin($user);    
+  }
+
+  /**
+   * UI functionality tests on profile edit pages
+   */
+  public function testEditingProfiles() {
+    // Assert UI elements.
+    $this->drupalGet(IMPORT_HTML_ADMIN_PATH);
+    $this->assertText('Import HTML Site');
+    $this->assertText('Step 1 of 3');
+    $this->assertRaw(IMPORT_HTML_ADMIN_PATH . '/setup');
+
+    $this->clickLink('Manage settings');
+    $this->assertText('import profile');
+    $this->clickLink('New');
+    $this->assertText('Profile ID');
+
+    $edit = array(
+      'profile_id' => 'test_profile',
+      #'translation_template' => drupal_get_path('module', 'import_html') . '/templates/simplehtml2simplehtml.xsl',
+      #'content_tag_id' => 'content',
+      'import_site_prefix' => 'archive',
+      'keep_temp_files' => TRUE,
+    );
+    $this->drupalPost(NULL, $edit, 'Save Settings');
+    $this->assertText('test_profile Profile Updated');
+    
+    // TODO test deleting
+  }
+  
+    
+  /**
+   * UI functionality tests on using the UI to import pages
+   * profile edit pages
+   */
+  public function testImportingThroughUI() {
+    $this->drupalGet(IMPORT_HTML_ADMIN_PATH);
+    $this->clickLink('Import HTML Site');
+    $source_siteroot = drupal_get_path('module', 'import_html') . '/tests/example_pages';
+    $edit = array(
+      'profile_id' => 'test_profile',
+      'source_siteroot' => $source_siteroot,
+      'current_subsection' => '',
+      'menu_parent_id' => 'primary-links:0',
+    );
+    $this->drupalPost(IMPORT_HTML_ADMIN_PATH, $edit, 'Next >>');
+    $this->assertText("Listing contents of $source_siteroot");
+$this->pass($this->drupalGetContent());
+    
+    $edit = array();
+    $edit['file_rel_path[input_example_01.htm]'] = TRUE;
+    $edit['file_rel_path[input_example_02.htm]'] = 'input_example_02.htm';
+    $edit['file_rel_path[input_example_03.htm]'] = 'input_example_03.htm';
+    $edit['file_rel_path[input_example_04.html]'] = 'input_example_04.html';
+    $this->drupalPost(NULL, $edit, 'Import Files');
+    $this->assertText("Using test_profile configuration settings");
+    
+    $this->assertText("Simple HTML Input 01 ");
+    $this->assertText("A real-world example");
+    $this->assertText("The new pages may be found");
+
+    $this->clickLink("A real-world example");
+
+    $this->assertText("You should see TWO images here");
+$this->pass($this->drupalGetContent());
+  }
+}

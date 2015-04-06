@@ -1,0 +1,10 @@
+name = "Presets"
+description = "An API for setting up a group of presets for a site."
+package = Presets
+core = 6.x
+; Information added by drupal.org packaging script on 2011-02-28
+version = "6.x-1.0-rc5"
+core = "6.x"
+project = "presets"
+datestamp = "1298855771"
+

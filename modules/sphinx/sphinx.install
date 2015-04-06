@@ -1,0 +1,117 @@
+<?php
+// $Id: sphinx.install,v 1.3.2.1 2009/02/25 17:40:28 johsw Exp $
+
+
+/**
+ * Implementation of hook_install().
+ */
+
+function sphinx_install() {
+  switch ($GLOBALS['db_type']) {
+    case 'mysql':
+    case 'mysqli':
+      $sql1 = "
+        CREATE TABLE IF NOT EXISTS sphinx_indexes (
+        iid int(3) unsigned NOT NULL auto_increment,
+        index_name varchar(60) NOT NULL,
+        display_name varchar(60) NOT NULL,
+        display_type varchar(60) NOT NULL DEFAULT 'nodes',
+        path varchar(60) NOT NULL,
+        default_sort_key_fid int(3) unsigned NOT NULL,
+        default_sort_order varchar(10) NOT NULL,
+		match_path varchar(255),
+        server varchar(255) NOT NULL,
+        port int(5) NOT NULL,
+        excerpt int(1) unsigned NOT NULL,
+        multiquery int(1) unsigned NOT NULL,
+        active int(1) unsigned NOT NULL,
+        PRIMARY KEY  (iid),
+        KEY url (path)
+        );";
+		
+      $sql2 = "
+        CREATE TABLE IF NOT EXISTS sphinx_fields (
+        fid int(11) unsigned NOT NULL auto_increment,
+        iid int(11) unsigned NOT NULL,
+        field_name varchar(60) NOT NULL,
+        display_name varchar(60) NOT NULL,
+        active int(11) unsigned NOT NULL,
+        excerpt int(11) unsigned NOT NULL,
+        weight tinyint(4) NOT NULL,
+        PRIMARY KEY  (fid),
+        KEY iid (iid)
+        );";
+      $sql3 = "
+        CREATE TABLE IF NOT EXISTS sphinx_attributes (
+ 		aid int(10) unsigned NOT NULL auto_increment,
+		iid int(3) unsigned NOT NULL,
+		attribute_name varchar(60) NOT NULL,
+		display_name varchar(60) NOT NULL,
+		type varchar(60) NOT NULL,
+		default_sort varchar(60) NOT NULL,
+		active int(1) unsigned NOT NULL,
+		facet int(1) unsigned NOT NULL,
+		PRIMARY KEY  (aid),
+		KEY iid (iid)
+		);";
+      $res1 = db_query($sql1);
+      $res2 = db_query($sql2);
+      $res3 = db_query($sql3);
+      if($res1 && $res2 && $res3) {
+        drupal_set_message(t('The Sphinx module is now installed!'));
+      } else {
+        drupal_set_message(t('Installation errror'),'error');
+      }
+	  break;
+				
+    case 'pgsql':
+      drupal_set_message(t('No pg support at the moment'),'error' );
+      break;
+  }
+} 
+	
+  
+/**
+ * Implementation of hook_uninstall().
+ */
+function sphinx_uninstall() {
+  $sql1 = "DROP TABLE sphinx_indexes;";
+  $sql2 = "DROP TABLE sphinx_fields;";
+  $sql3 = "DROP TABLE sphinx_attributes";
+  $res1 = db_query($sql1);
+  $res2 = db_query($sql2);
+  $res3 = db_query($sql3);
+  drupal_set_message(t("The Sphinx module is now uninstalled!"));
+}
+
+/**
+ * Implementation of hook_requirements().
+ * Lame original assumes Sphinx daemon is running locally.
+ */
+function sphinx_requirements($phase) {
+  $t        = get_t();
+  $path     = './'. drupal_get_path('module', 'sphinx') ."/includes/api";
+  $api_file = $path ."/sphinxapi.php";
+  if (file_exists($api_file)) {
+    include_once ($api_file);
+  }
+  $api_exists = class_exists('SphinxClient');
+  $requirements['sphinx_api'] = array(
+    'title' => $t('Sphinx api'),
+    'value' => $api_exists ? 'Sphinx api installed correctly' : "Sphinx api NOT installed correctly! Download Sphinx (http://www.sphinxsearch.com/downloads.html) and find the file sphinxapi.php and place it in ". $path,
+    'severity' => $api_exists ? REQUIREMENT_OK : REQUIREMENT_ERROR,
+  );
+  if ($api_exists) {
+    $cl = new SphinxClient();
+    /* hacked to set our server as client */
+    $cl -> SetServer('africanlii', 3312);
+    $connect = $cl->_Connect();
+    $requirements['sphinx_daemon'] = array(
+      'title' => $t('Sphinx daemon'),
+      'value' => $connect ? 'Sphinx daemon running and connected' : 'Sphinx daemon NOT running',
+      'severity' => $connect ? REQUIREMENT_OK : REQUIREMENT_ERROR,
+    );
+  }
+  return $requirements;
+}
+

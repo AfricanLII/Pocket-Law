@@ -1,0 +1,276 @@
+<?php
+include 'preg_find.php';
+
+function caseimport_help($path, $arg) {
+  $output = '';  //declare your output variable
+  switch ($path) {
+    case "admin/help#caseimport":
+      $output = '<p>'.  t("bulk imports case law") .'</p>';
+      break;
+  }
+  return $output;
+} // function caseimport_help
+
+/**
+ * Implementation of hook_theme().
+ */
+function caseimport_theme($path, $args) {
+  return array(
+    'indexpage_term' => array(
+      'arguments' => array('term', 'type'),
+      ),
+    );
+}
+
+/**
+
+/**
+* Valid permissions for this module
+* @return array An array of valid permissions for the onthisdate module
+*/
+function caseimport_perm() {
+  return array('access caseimport', 'create caseimport', 'administer caseimport');
+} // function caseimport_perm()
+
+function caseimport_menu() {
+$items = array();
+
+//Link to the propertydata_import admin page:
+$items['admin/caseimport'] = array(
+'title' => 'Import case data into Drupal',
+'description' => 'Import case data into Drupal',
+'page callback' => 'caseimport_callback',
+'access arguments' => array('administer caseimport'),
+'type' => MENU_NORMAL_ITEM,
+);
+
+/*$items['admin/settings/caseimport'] = array(
+      'title' => 'CaseImport',
+      'description' => 'CaseImport settings.',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('caseimport_admin_settings'),
+      'access arguments' => array('administer site configuration'),
+      'type' => MENU_NORMAL_ITEM,
+      'file' => 'caseimport.admin.inc',
+      );
+*/
+return $items;
+}
+
+function get_string_between($string, $start, $end){
+        $string = " ".$string;
+        $ini = strpos($string,$start);
+        if ($ini == 0) return "";
+        $ini += strlen($start);
+        $len = strpos($string,$end,$ini) - $ini;
+        return substr($string,$ini,$len);
+}
+
+function caseimport_callback() {
+  // what user id should the files be imported as?
+    $uid = 1;
+
+    // prevent this from running under apache:
+//    if (array_key_exists('REQUEST_METHOD', $_SERVER)) {
+ //       echo 'nope.  not executing except from the command line.';
+  //      exit(1);
+   // }
+
+    // set HTTP_HOST or drupal will refuse to bootstrap
+    $_SERVER['HTTP_HOST'] = 'www.malawilii.org';
+    include_once 'includes/bootstrap.inc';
+    drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+
+    // create a user that will be the author of the files/nodes
+    // created
+
+    global $user;
+    $user = user_load($uid);
+
+$files = preg_find('/^([0-9]*)(.html)$/', '/var/www/drupal-multisite/files/ug/cases/UGCommC/2011', PREG_FIND_RECURSIVE);
+//$tg = '/home/kerry/Seychelles/sc';
+//$d = dir($tg);
+//while(false !== ($name != $d->read())) {
+//	$pattern = '/(.html)$/';
+//	if($name != '.' && $name != '..' && preg_match($pattern,$name)) {
+foreach($files as $file) {
+        echo "$file\n" ;
+        list($fname, $ext) = explode(".", $file);
+        $pdf_file = $fname . ".pdf";
+        $rtf_file = $fname . ".rtf";
+        $base_pdf_file = basename($pdf_file);
+        $base_rtf_file = basename($rtf_file);
+        echo "pdf_file: $pdf_file rtf_file: $rtf_file\n";
+	echo "base_pdf_file: $base_pdf_file base_rtf_file: $base_rtf_file\n";
+        list($jno, $fext) = explode(".", $base_pdf_file);
+        system("/usr/bin/fromdos -dov $file");
+        $fh = fopen($file, "r") or die("Can't open file");
+        $fullstring = fread($fh, filesize($file));
+        //$fullstring = "this is my <title>dog</title>";
+        $parsed = get_string_between($fullstring, "<title>", "</title>");
+        $title = htmlspecialchars_decode(get_string_between($fullstring, "<title>", "["));
+//        preg_match("/[A-Z]*\/[A-Z]*\/[0-9]*\/[0-9]*/", $parsed, $matches);
+	preg_match('#\([^)]+\)#', $parsed, $matches);
+        $caseno = $matches[0];
+//      $caseno = get_string_between($parsed, "(", ")");
+        //preg_match("/\[[0-9]{4}\] UG[A-Z]* [0-9]*/", $parsed, $matches2) ;
+        preg_match("/\[[0-9]{4}\] UGCommC [0-9]*/", $parsed, $matches2) ;
+        $mnc = $matches2[0];
+ 	//preg_match("/UG[A-Z]*/", $mnc, $matches3) ;
+ 	preg_match("/UGCommC/", $mnc, $matches3) ;
+	$courtabbr = $matches3[0];
+	echo "courtabbr: $courtabbr\n" ;
+	switch ($courtabbr) {
+		case "UGHC":
+		$courtname = "High Court";
+        	$cname = "high-court";
+		$tid = 4;
+		break;
+		case "UGSC":
+		$courtname = "Supreme Court";
+		$cname = "supreme-court";
+		$tid = 1;
+		break;
+		case "UGCommC":
+		$courtname = "Commercial Court";
+		$cname = "commercial-court";
+		$tid = 5;
+		break;
+	}
+        echo "courtname: $courtname\n";
+	echo "cname: $cname\n";
+        $pre_pre_judgment_date = get_string_between($fullstring, "(", "<meta>");
+        $pre_judgment_date = get_string_between($pre_pre_judgment_date, "]", "</title>");
+        $judgment_date = get_string_between($pre_judgment_date, "(", ")");
+        //$judgment_date = date("j F, Y"); 
+        $year = get_string_between($parsed, "[", "]");
+        preg_match("/<!--sino date [0-9]* [A-Z][a-z]* [0-9]{4}-->/", $fullstring, $sinomatches);
+$sinomatch = $sinomatches[0];
+        //echo "sinomatch $sinomatch\n";
+        $body = get_string_between($fullstring, $sinomatch, "<!--sino noindex-->");
+        //echo "parsed: $parsed\n";
+        echo "title: $title\n";
+        echo "caseno: $caseno\n";
+        echo "mnc: $mnc\n";
+        echo "judgment_date: $judgment_date\n";
+        echo "jno: $jno\n";
+        echo "year: $year\n";
+//      echo "body: $body\n";
+
+	$unixdate = strtotime($judgment_date);
+        $udate = date("Y-m-d H:i:s", $unixdate);
+        echo "unixdate: $unixdate\n";
+
+// now insert into database
+	$node = new stdClass();	
+	$node->uid = 1;
+	$node->name = $title;
+	$node->title = $title;
+	$node->body = $body;
+	$node->type = 'caselaw';
+	$node->created = time();
+	$node->changed = $node->created;
+	$node->promote = 0;
+	$node->sticky = 0;
+	$node->format = 4;
+	$node->status = 1;
+	$node->language = 'en';
+//	$node->field_courtname[0]['value'] = $courtname;
+	$node->field_mnc[0]['value'] = $mnc;
+	$node->field_jdate[0]['value'] = $unixdate;
+	$node->field_judge[0]['value'] = '';
+	$node->field_jno[0]['value'] = $jno;
+	$node->field_caseno[0]['value'] = $caseno;
+	$node->taxonomy = array($tid => taxonomy_get_term($tid));	
+
+	if(file_exists($pdf_file)) {
+        $pdf_filesize = filesize($pdf_file);
+//	$dest = file_directory_path();
+	$dest = "/var/www/drupal-multisite/sites/uganda.africanlii.org/files";
+	echo "dest: $dest\n";
+        $target = "ug/judgment/" . $cname . "/" . $year . "/" . $jno . "/";
+	// if new directory path does not exist, create it
+	$new_dir_path = $dest . "/" . $target;
+	if(!file_check_directory($new_dir_path, $mode = FILE_CREATE_DIRECTORY))
+	{
+		echo "failed to create directory: $new_dir_path\n";
+	}
+	else
+	{
+		echo "created directory: $new_dir_path\n";
+	}
+  
+	
+ 	// Copy the file to the Drupal files directory 
+    	if(!file_copy($pdf_file,$target)) {
+        	echo "Failed to move file: $pdf_file.\n";
+        //	return;
+    	} else {
+		echo "copied file: $pdf_file.\n";
+        // file_move might change the name of the file
+        	$fname = basename($pdf_file);
+    	}
+
+	$pdffile = new stdClass();
+	$pdffile->filename = $fname;
+	$pdffile->filepath = $target .$fname;
+	$pdffile->filemime = file_get_mimetype($fname);
+	$pdffile->filesize = $pdf_filesize;
+	$pdffile->filesource = $fname;
+	$pdffile->uid = 1;
+	$pdffile->status = FILE_STATUS_TEMPORARY;
+	$pdffile->timestamp = time();
+	$pdffile->list = 1;
+	$pdffile->description = $fname;
+	$pdffile->new = true;
+	
+	drupal_write_record('files', $pdffile);
+	file_set_status($pdffile,1);
+	$node->files[$pdffile->fid] = $pdffile;
+        }
+
+	if(file_exists($rtf_file)) {
+	$rtf_filesize = $details['size'];
+	$dest = file_directory_path();
+        $target = "ug/judgment/" . $cname . "/" . $year . "/" . $jno . "/";
+	// if new directory path does not exist, create it
+	$new_dir_path = $dest . "/" . $target;
+	file_check_directory($new_dir_path, $mode = FILE_CREATE_DIRECTORY);
+
+	//copy the file to the Drupal files directory
+	if(!file_copy($rtf_file,$target)) {
+		echo "Failed to move file: $rtf_file.\n";
+	} else {
+		echo "copied rtf file: $rtf_file.\n";
+	// file move might change the name of the file
+		$fname2 = basename($rtf_file);
+	}		
+
+	$rtffile = new stdClass();
+	$rtffile->filename = $fname2;
+	$rtffile->filepath = $target . $fname2;
+	$rtffile->filemime = file_get_mimetype($fname2);
+	$rtffile->filesize = $rtf_filesize;
+	$rtffile->filesource = $fname2;
+	$rtffile->uid = 1;
+	$rtffile->status = FILE_STATUS_TEMPORARY;
+	$rtffile->timestamp = time();
+	$rtffile->list = 1;
+	$rtffile->description = $fname2;
+	$rtffile->new = true;
+
+	drupal_write_record('files', $rtffile);
+	file_set_status($rtffile, 1);
+	$node->files[$rtffile->fid] = $rtffile;
+	}
+
+	if ($node = node_submit($node)) {
+	    node_save($node);
+	    drupal_set_message(t("Node ".$node->title." added correctly"));
+	} else {
+	    drupal_set_message(t("Node ".$node->title." added incorrectly"), "error");
+	}
+
+
+}
+}

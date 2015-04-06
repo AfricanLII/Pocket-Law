@@ -1,0 +1,13 @@
+core = "6.x"
+description = "Perform simple search & replace on content during the import"
+name = "Import HTML - Search & Replace"
+package = "Import/Export"
+dependencies[] = import_html
+
+
+; Information added by drupal.org packaging script on 2011-04-11
+version = "6.x-1.1"
+core = "6.x"
+project = "import_html"
+datestamp = "1302528416"
+

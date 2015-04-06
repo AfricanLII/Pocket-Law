@@ -1,0 +1,12 @@
+<?php
+
+function sphinx_suggestion_requirements($phase) {
+  $t        = get_t();
+  $pspell = function_exists('pspell_suggest'); 
+		$requirements['pspell'] = array(
+    'title' => $t('PSPELL'),
+    'value' => $pspell ? 'pspell installed correctly' : 'pspell not installed ('.l('http://www.php.net/manual/en/pspell.installation.php', 'http://www.php.net/manual/en/pspell.installation.php').')', 
+    'severity' => $pspell ? REQUIREMENT_OK : REQUIREMENT_ERROR,
+  );
+  return $requirements;
+}

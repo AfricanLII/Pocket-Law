@@ -1,0 +1,32 @@
+Index: simplenews_template.module
+===================================================================
+RCS file: /cvs/drupal/contributions/modules/simplenews_template/simplenews_template.module,v
+retrieving revision 1.9.2.8
+diff -u -r1.9.2.8 simplenews_template.module
+--- simplenews_template.module	13 Nov 2009 22:52:21 -0000	1.9.2.8
++++ simplenews_template.module	20 Dec 2009 22:56:50 -0000
+@@ -114,18 +114,17 @@
+   // Tokenize the header and footer: find the tokens
+   global $language, $user;
+   $context['node'] = $node;
+-  $variables = simplenews_mail_tokens($user, $message['params']['context'], $language);
+-  
+-  // Retrive and filter the header content
++
++  // Retrieve and filter the header content
+   $header = _simplenews_template_get_header($tid);
+   // Tokenize the header
+-  $header = strtr($header, $variables);
++  $header = token_replace($header, 'simplenews', array('node' => $node));
+   $header = check_markup($header, _simplenews_template_get_header_format($tid), false);
+ 
+-  // Retrive and filter the footer content
++  // Retrieve and filter the footer content
+   $footer = _simplenews_template_get_footer($tid);
+   // Tokenize the footer
+-  $footer = strtr($footer, $variables);
++  $footer = token_replace($footer, 'simplenews', array('node' => $node));
+   $footer = check_markup($footer, _simplenews_template_get_footer_format($tid), false);
+ 
+   // Add headers and footer
+

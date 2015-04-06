@@ -1,0 +1,9 @@
+<?php
+
+function sharethis_widget_install() {
+  
+}
+
+function sharethis_widget_uninstall() {
+  
+}

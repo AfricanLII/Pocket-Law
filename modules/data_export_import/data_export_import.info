@@ -1,0 +1,12 @@
+name = Data export import
+description = Exports datasets as files which can then imported into other Drupal instances.
+core = 6.x
+dependencies[] = node
+dependencies[] = taxonomy
+
+; Information added by drupal.org packaging script on 2012-11-09
+version = "6.x-1.1"
+core = "6.x"
+project = "data_export_import"
+datestamp = "1352472957"
+

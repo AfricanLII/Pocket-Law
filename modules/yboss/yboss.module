@@ -1,0 +1,87 @@
+<?php
+// $Id: yboss.module,v 1.1.2.1 2008/07/14 06:59:28 mfb Exp $
+
+/**
+ * Implementation of hook_menu().
+ */
+function yboss_menu() {
+  $items['admin/settings/yboss'] = array(
+    'title' => 'Yahoo BOSS',
+    'description' => 'Configure settings for the Yahoo BOSS search tab.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('yboss_settings'),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'yboss.admin.inc',
+  );
+  return $items;
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function yboss_perm() {
+  return array('search Yahoo BOSS');
+}
+
+/**
+ * Implementation of hook_search().
+ */
+function yboss_search($op = 'search', $keys = NULL) {
+  if (user_access('search Yahoo BOSS')) {
+    switch ($op) {
+      case 'name':
+        return ($name = variable_get('yboss_name', '')) ? $name : t('Yahoo');
+      case 'search':
+        module_load_include('search.inc', 'yboss');
+        return yboss_search_process($keys);
+    }
+  }
+}
+
+/**
+ * Implementation of hook_form_alter().
+ */
+function yboss_form_alter(&$form, $form_state, $form_id) {
+  if (($form_id == 'search_block_form' && variable_get('yboss_block', 0)) || ($form_id == 'search_theme_form' && variable_get('yboss_theme', 0))) {
+    $form['#submit'] = array('yboss_search_box_form_submit');
+  }
+}
+
+/**
+ * Redirect search box submission to Yahoo BOSS search page.
+ */
+function yboss_search_box_form_submit($form, &$form_state) {
+  $form_id = $form['form_id']['#value'];
+  $form_state['redirect'] = 'search/yboss/'. trim($form_state['values'][$form_id]);
+}
+
+/**
+ * Submit search query to web service and parse search results.
+ * Returns an array of result items, or raw JSON if $query['format'] is "json".
+ */
+function yboss_search_query($keys = '', $query = array(), $search = 'web', $version = 'v1') {
+  $query += array(
+    'appid' => variable_get('yboss_appid', ''),
+    'format' => 'xml',
+    'lang' => variable_get('yboss_lang', 'en'),
+    'region' => variable_get('yboss_region', 'us'),
+  );
+  $request = drupal_http_request('http://boss.yahooapis.com/ysearch/'. $search .'/'. $version .'/'. drupal_urlencode($keys) .'?'. drupal_query_string_encode($query));
+  // Uncomment me to print XML.
+  // drupal_set_message('<pre>' . check_plain($request->data) . '</pre>');
+  if ($query['format'] == 'xml') {
+    $response = simplexml_load_string($request->data);
+    $search = 'resultset_'. $search;
+    $attributes = isset($response->$search) ? $response->$search->attributes() : array();
+    if ($error = $response->children('http://schemas.yahooapis.com/'. $version .'/schema.xsd')) {
+      drupal_set_message(t('Yahoo BOSS error: @description (@detail).', array('@description' => $error->description, '@detail' => $error->detail)), 'error');
+    }
+    return array(
+      'total' => min(isset($attributes['totalhits']) ? $attributes['totalhits'] : 0, 1000),
+      'items' => isset($response->$search->result) ? $response->$search->result : array(),
+    );
+  }
+  else {
+    return $request->data;
+  }
+}

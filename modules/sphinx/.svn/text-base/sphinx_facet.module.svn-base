@@ -1,0 +1,260 @@
+<?php
+function sphinx_facet_menu() {
+ 
+  $items['admin/settings/sphinx/facet'] = array(
+    'title' => t('Facets'),
+    'description' => t('Configure the Sphinx facets'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('sphinx_facet_administration'),
+    'access arguments' => array('administer sphinx search'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 4,
+  );
+  return $items;
+}
+
+
+function sphinx_facet_theme($existing, $type, $theme, $path) {
+  return array(
+    'sphinx_facet_groups' => array(
+      'arguments' => array(
+        'facet' => NULL, 
+        
+      ),
+    ),
+    'sphinx_facet_group' => array(
+      'arguments' => array(
+        'line' => NULL, 
+        'header' => NULL,
+      ),
+    ),
+  );
+}
+
+
+
+function sphinx_facet_administration($form_state){
+  $options = array();
+  for($n=1;$n<=20;$n++) { $options[$n] = $n;}
+  $form['sphinx_facet']['no_facets'] = array(
+    '#type' => 'select',
+    '#title' => t('Number of facets'),
+    '#default_value' =>  variable_get('sphinx_facet_number_of_facets', 5),
+    '#description' => t(""),
+    '#options' => $options,
+  );
+  $form['#submit'][] = 'sphinx_facet_administration_submit';
+  return system_settings_form($form);
+
+
+}
+function sphinx_facet_administration_submit($form, &$form_state){
+  
+  variable_set('sphinx_facet_number_of_facets', $form_state['values']['no_facets']);
+  drupal_set_message(t('Facet settings updated!'));
+}
+
+function sphinx_facet_block($op = 'list', $delta = 0, $edit = array()){
+  if ($op == 'list') {
+    $blocks['facet'] = array(
+	  'info' => t('Sphinx - facets'),
+      'weight' => 0, 
+      'enabled' => 1, 
+	  'region' => 'sidebar_wide'
+	);
+	return $blocks;
+  }
+  else if ($op == 'view') {
+  	if($delta=='facet') {
+  	  $index_path = arg(1);
+  	 
+  	  if(arg(0)=='find' && !empty($index_path)){
+  	    $index = _sphinx_get_index_by_path(arg(1));
+  	    $attributes = _sphinx_facet_get_attributes_by_iid($index);
+  	    $facets = _sphinx_facet_build_facets($index, $attributes);
+  	    
+  	    return array('subject' => 'Facets', 'content' => $facets); 	
+  	  }
+  	}
+  }
+}
+
+function _sphinx_facet_get_attributes_by_iid($index) {
+  if (!empty($index)) {
+    $res = db_query('SELECT aid, attribute_name, display_name, type FROM {sphinx_attributes} WHERE iid=%d && facet=1' , $index);
+    $attributes = array();
+    while($attr = db_fetch_object($res)) {
+      $attributes[] = $attr;
+    }
+    return $attributes;
+  }
+}
+
+function _sphinx_facet_build_facets($index, $attributes){
+  //TODO: Don't display currently active filters
+  
+  $response = '';
+  $url = explode('?', $_SERVER['REQUEST_URI']);
+  $query = _sphinx_facet_build_query($index);
+  $index_name = _sphinx_facet_get_index_name_by_id($index);
+  $client = _sphinx_get_client();
+  $display_names = array(); 
+  if (!empty($_GET['as_filter'])) {
+    $filter_codes = explode('-', $_GET['as_filter']);
+    $filters = array();
+    $filters_numeric = array();
+    for($z=0; $z<count($filter_codes); $z++){
+      $parts = explode('_',$filter_codes[$z]);
+      if(!empty($parts[0]) && !empty($parts[1])) {
+        $filters_numeric[$parts[0]][] = $parts[1];
+        $attribute = _sphinx_facet_get_attribute_data_by_aid($parts[0]);
+        $filters[$attribute->attribute_name] = array($parts[1]);
+      }
+    }
+    
+    
+  }
+  $limit = variable_get('sphinx_facet_number_of_facets', 5);
+  for($n=0; $n<count($attributes); $n++) {
+    if(is_array($filters)){
+      foreach($filters as $attribute => $values){
+        $client->SetFilter( $attribute, $values );
+      }
+    }
+    $client->SetGroupBy($attributes[$n]->attribute_name,SPH_GROUPBY_ATTR, "@count desc");
+    $client->SetMatchMode(SPH_MATCH_EXTENDED);
+    $client->SetLimits(0,$limit);
+    $client->AddQuery($query, $index_name);
+    $display_names[$n]= $attributes[$n]->display_name;
+  }
+  $results = $client->RunQueries();
+  
+  $total = 0;
+  
+  for($n=0; $n<count($results); $n++) {
+      
+      $total += $results[$n]['total_found'];
+      $header = $display_names[$n];
+      $lines = array();
+      $aid = $attributes[$n]->aid;
+      if(is_array($filters_numeric[$aid])){
+        foreach($filters_numeric[$aid] as $key) {
+          if($attributes[$n]->type == "term"){ 
+            $term = taxonomy_get_term($key);
+        	$link = $term->name;
+          } else if ($attributes[$n]->type == "user") {
+            $u = user_load(array('uid' => $key));
+            $link = $u->profile_navn;
+          } else if ($attributes[$n]->type == "node") {
+            // TODO
+          }  else if ($attributes[$n]->type == "other") {
+            $link = $key;
+          }
+          $query_string = str_replace($aid.'_'.$key.'-','', $url[1]);
+          parse_str($query_string, $query_array);
+          if(empty($query_array['as_filter'])){
+            $query_string = str_replace('as_filter=','', $query_string);
+            $query_string = empty($query_string)?null:$query_string;
+          }
+          $lines[] = '<span class="sphinx-facet-entity-selected">'.$link. ' ('.l('x', urldecode(substr($url[0],1)), array('query' => $query_string)).')</span>';
+        
+
+        }
+      }
+       
+      if(is_array($results[$n]['matches'])){
+        foreach($results[$n]['matches'] as $tid => $value) {
+          $code = $attributes[$n]->aid.'_'.$value['attrs']['@groupby'];
+          
+          if(is_array($filter_codes)){
+            $selected = in_array($code, $filter_codes); 
+          } else {
+            $selected = false;
+          }   
+          
+          if($attributes[$n]->type == "term"){ 
+            $term = taxonomy_get_term($value['attrs']['@groupby']);
+      	    $link = $term->name;
+          } else if ($attributes[$n]->type == "user") {
+            $u = user_load(array('uid' => $value['attrs']['@groupby']));
+            $link = $u->profile_navn;
+          } else if ($attributes[$n]->type == "node") {
+            // TODO
+          }  else if ($attributes[$n]->type == "other") {
+            $link = $value['attrs']['@groupby'];
+          }
+          if(empty($_GET['as_filter'])) {
+            $qstring = 'as_filter='.$attributes[$n]->aid.'_'.$value['attrs']['@groupby'].'-'; 
+            $query_string = (empty($url[1]))?$qstring:$url[1].'&'.$qstring;
+          } else {
+            $pieces = explode('&',$url[1]);
+            for($x=0; $x<count($pieces); $x++) {
+              $frag = explode('=', $pieces[$x]);
+      	      if($frag[0]=='as_filter') {
+      	        $pieces[$x] = $frag[0].'='.$frag[1].$attributes[$n]->aid.'_'.$value['attrs']['@groupby'].'-';
+      	      }   
+            }
+          $query_string = implode('&', $pieces);
+          }
+          if(!empty($link)) {
+           
+            if(!$selected){
+             
+              $lines[] = l($link. ' ('.$value['attrs']['@count'].') ', urldecode(substr($url[0],1)), array('query' =>$query_string));
+            } 
+          }
+        }
+      } 
+    
+    $response .= theme('sphinx_facet_group', $lines, $header);
+  }
+  if($total){
+    
+    return theme('sphinx_facet_groups', $response);
+  } else {
+    return;
+  }
+}
+
+
+function theme_sphinx_facet_groups($facets) {
+  return '<div id="sphinx-facet-groups">'.$facets.'</div>';
+}
+
+
+function theme_sphinx_facet_group($lines, $header) {
+ static $count = 0;
+ $count++;
+ return '<div class="sphinx-facet-group sphinx-facet-group-'.strtolower(strip_tags($header)).'" id="sphinx-facet-group-'.$count.'">'.theme('item_list', $lines, $header).'</div>';
+}
+
+function _sphinx_facet_build_query($index) {
+ 
+  $fields = _sphinx_get_active_fields_by_iid($index);
+  $needle = arg(2).' ';
+  foreach ($fields as $fid => $name) {
+    $term = $_GET['as_f'. $fid];
+    if (!empty($term)) {
+      $needle .= '@'. $name .' '. $term .' ';
+    }
+  }
+  if (!empty($needle)) {
+    return $needle; 
+  }
+  return;
+}	
+
+function _sphinx_facet_get_attribute_data_by_aid($aid = null) {
+  if (!empty($aid)) {
+    $res = db_query('SELECT * FROM {sphinx_attributes} WHERE aid=%d', $aid);
+    $index = db_fetch_object($res);
+    return $index;
+  }
+}
+function _sphinx_facet_get_index_name_by_id($iid) {
+  if (!empty($iid)) {
+    $res = db_query('SELECT index_name FROM {sphinx_indexes} WHERE iid="%d"', $iid);
+    $index = db_fetch_object($res);
+    return $index->index_name;
+  }
+}

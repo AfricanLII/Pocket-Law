@@ -1,0 +1,851 @@
+<?php
+/**
+ * @file
+ * Sphinx module
+ *
+ * This module interfaces Sphinxsearch with Drupal (http://www.sphinxsearch.com)
+ *
+ * Module originally written by Johs. Wehner (http://drupal.org/user/58666)
+ * and sponsored by Dagbladet Information (http://www.information.dk).
+ * Substantially debugged and reworked by Thomas R. Bruce, Legal Information Institute (http://www.law.cornell.edu)
+ * 
+ * 
+ */
+
+/**
+ * Define a default host. Most people will want this to be 'localhost', and the default port (3312)
+ * 
+*/
+define ( "SPH_DEFAULT_HOST",	'localhost' );
+define ( "SPH_DEFAULT_PORT", 	3312);
+
+/**
+* Bring in the API calls
+**/
+$path = './'. drupal_get_path('module', 'sphinx') .'/includes/api';
+$api_file = $path .'/sphinxapi.php';
+if (file_exists($api_file)) {
+  include_once($api_file);
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function sphinx_menu() { 
+  $items['admin/settings/sphinx'] = array(
+    'title' => t('Sphinx settings'),
+    'description' => t('Configure the Sphinx search and result pages'),
+    'page callback' => '_sphinx_admin',
+    'access arguments' => array('administer sphinx search'),
+    'file' => 'sphinx.admin.inc.php',
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['admin/settings/sphinx/main'] = array(
+    'title' => t('Sphinx settings'),
+    'description' => t('Configure the Sphinx search and result pages'),
+    'page callback' => '_sphinx_admin',
+    'access arguments' => array('administer sphinx search'),
+    'weight' => -1,
+    'file' => 'sphinx.admin.inc.php',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  $items['admin/settings/sphinx/indexes'] = array(
+    'title' => t('Indexes'),
+    'description' => t('Configure the Sphinx indexes'),
+    'page callback' => '_sphinx_admin_indexes',
+    'access arguments' => array('administer sphinx search'),
+    'file' => 'sphinx.admin.inc.php',
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['admin/settings/sphinx/fields'] = array(
+    'title' => t('Fields'),
+    'description' => t('Configure the Sphinx fields'),
+    'page callback' => '_sphinx_alter_fields',
+    'access arguments' => array('administer sphinx search'),
+    'file' => 'sphinx.admin.inc.php',
+    'type' => MENU_CALLBACK,
+  );
+  $items['admin/settings/sphinx/attributes'] = array(
+    'title' => t('Attributes'),
+    'description' => t('Configure the Sphinx attributes'),
+    'page callback' => '_sphinx_alter_attributes',
+    'access arguments' => array('administer sphinx search'),
+    'file' => 'sphinx.admin.inc.php',
+    'type' => MENU_CALLBACK,
+  );
+  $items['find'] = array(
+         'title' => utf8_encode('Search'),
+        'description' => t('Search'),
+         'page callback' => '_sphinx_aliased_goto',
+         'page arguments' => array('find/'._sphinx_get_name_by_iid(variable_get('sphinx_default_index', ''))), //####
+         'access arguments' => array('use sphinx search'),
+         'type' => MENU_NORMAL_ITEM,
+       );
+	// menu entries for individual indexes, constructed from database
+  $res = db_query('SELECT iid, display_name, index_name, path FROM {sphinx_indexes} WHERE active=1');
+  while ($indexes = db_fetch_object($res)) {
+    $items['find/'. $indexes->index_name] = array(
+        'title' => t('Search !index', array('!index' => $indexes->display_name)),
+        'description' => t('Search !index', array('!index' => $indexes->display_name)),
+        'page callback' => '_sphinx_search_page',
+        'page arguments' => array($indexes->iid, ''),
+        'access callback' => user_access('use index '. $indexes->display_name .'('. $indexes->iid .')'),
+        'type' => ($indexes->iid == variable_get('sphinx_default_index', '')) ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+      );
+      $items['find/'. $indexes->index_name. '/%'] = array(
+        'title' => t('Search !index', array('!index' => $indexes->display_name)),
+        'description' => t('Search !index', array('!index' => $indexes->display_name)),
+        'page callback' => '_sphinx_search_page',
+        'page arguments' => array($indexes->iid, 2),
+        'access callback' => user_access('use index '. $indexes->display_name .'('. $indexes->iid .')'),
+        'type' => ($indexes->iid == variable_get('sphinx_default_index', '')) ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+      );
+  }
+  
+  return $items;
+}
+function sphinx_theme($existing, $type, $theme, $path) {
+  return array(
+    'sphinx_results' => array(
+      'arguments' => array(
+        'results' => NULL, 
+        'index' => variable_get('sphinx_default_index', ''),
+        'needle' => arg(2),
+        'show_excerpts' => true,
+      ),
+    ),
+    'sphinx_result' => array(
+      'arguments' => array(
+        'node' => NULL, 
+        'excerpt' => NULL,
+        'fields' => NULL,
+      ),
+    ),
+    'sphinx_feedback' => array(
+      'arguments' => array(
+        'results' => NULL, 
+        'needle' => NULL,
+      ),
+    ),
+    'sphinx_excerpt_result' => array(
+      'arguments' => array(
+        'node' => NULL, 
+        'excerpt' => NULL,
+        'fields' => NULL,
+
+      ),
+    ),
+    'sphinx_search_form' => array(
+      'arguments' => array(
+        'form' => NULL, 
+      ),
+    ),
+    'sphinx_simple_search_form' => array(
+      'arguments' => array(
+        'form' => NULL, 
+      ),
+    ),    
+  );
+}
+
+
+
+function sphinx_block($op = 'list', $delta = 0, $edit = array()){
+  if ($op == 'list') {
+    $blocks['search_stats'] = array(
+	  'info' => t('Sphinx - statistics feedback'),
+      'weight' => 0, 
+      'enabled' => 1, 
+	);
+    $blocks['search_box'] = array(
+	  'info' => t('Sphinx - search box'),
+      'weight' => 0, 
+      'enabled' => 1, 
+	);
+	$blocks['simple_search_box'] = array(
+	  'info' => t('Sphinx - simple search box'),
+      'weight' => 0, 
+      'enabled' => 1, 
+	);
+	$blocks['context_search_box'] = array(
+		'info' => t('Sphinx context-aware simple search box'),
+		'weight' => 0,
+		'enabled' => 1,
+	);
+
+	return $blocks;
+  }
+  else if ($op == 'view') {
+  	if($delta=='search_stats') {
+  	  $stats = !empty($GLOBALS['sphinx_feedback_stats'])?$GLOBALS['sphinx_feedback_stats']:'';
+  	  return array('subject' => t('Search statistics'), 'content' => $stats); 	
+  	}
+  	if($delta=='search_box') {
+  	  $index_path = arg(1);
+  	  $needle = arg(2);
+  	  $iid    = _sphinx_get_index_by_path($index_path);
+  	  $box = drupal_get_form('sphinx_search_form', $iid, $needle);
+  	  return array('subject' => t('Search'), 'content' => $box); 	
+  	}
+  	if($delta=='simple_search_box') {
+  	  $index_path = arg(1);
+  	  if(arg(0)==variable_get('sphinx_default_path', 'search')){
+  	    $needle = arg(2);
+  	  } else {
+  	    $needle = '';
+  	  }
+  	  $iid    = _sphinx_get_index_by_path($index_path);
+  	  $box = drupal_get_form('sphinx_simple_search_form', $needle);
+  	  return array('subject' => t('Search'), 'content' => $box); 	
+  	}
+	if($delta=='context_search_box') {
+  	  if(arg(0)==variable_get('sphinx_default_path', 'search')){
+  	    $needle = arg(2);
+  	  } else {
+  	    $needle = '';
+  	  }
+  	  $iid   = _sphinx_get_index_from_context();
+	  //$res = db_query('SELECT path FROM {sphinx_indexes} WHERE iid="%s"', $iid);
+     // $index_path = db_fetch_object($res);
+  	  $box = drupal_get_form('sphinx_search_form',$iid, $needle);
+  	  return array('subject' => t('Search'), 'content' => $box); 	
+  	}
+  }
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function sphinx_perm() {
+  $permissions = array('use sphinx search', 'administer sphinx search');
+  $res = db_query('SELECT iid, display_name, path FROM {sphinx_indexes} WHERE active=1');
+  while ($indexes = db_fetch_object($res)) {
+  	$permissions[] = 'use index '. $indexes->display_name .'('. $indexes->iid .')';
+  }
+  return $permissions;
+}
+
+/**
+ * Implementation of hook_help().
+ */
+function sphinx_help($section = '') {
+  $output = '';
+  switch ($section) {
+    case 'admin/help#infsphinxphpsearch':
+      $output = '<p>'. t('Sphinx search (Dagbladet Information)') .'</p>';
+      break;
+  }
+  return $output;
+}
+
+/**
+ *  Utility functions for getting indexes based on different criteria.
+ */
+function _sphinx_get_index_by_path($path = null) {
+  if (!empty($path)) {
+    $res = db_query('SELECT iid FROM {sphinx_indexes} WHERE path="%s"', $path);
+    $index = db_fetch_object($res);
+    return $index->iid;
+  }
+}
+
+function _sphinx_get_index_by_name($name = null) {
+  if (!empty($path)) {
+    $res = db_query('SELECT iid FROM {sphinx_indexes} WHERE index_name="%s"', $name);
+    $index = db_fetch_object($res);
+    return $index->iid;
+  }
+}
+/**
+ * _sphinx_get_index_from_context
+ *
+ * @return iid - identifier for a sphinx index
+ * @author Thomas Bruce
+ **/
+
+function _sphinx_get_index_from_context(){
+	$node_path = preg_replace('/^destination=/','',urldecode(drupal_get_destination())); //_sphinx_get_active_path();
+	$alias = _sphinx_get_url_alias($node_path);
+	$res = db_query('SELECT iid, match_path FROM {sphinx_indexes} WHERE active=1');
+	  while ($indexes = db_fetch_object($res)) {
+	  	if (preg_match($indexes->match_path, $node_path)){return $indexes->iid;}
+		if (preg_match($indexes->match_path, $alias)){return $indexes->iid;}
+	  }
+	return (variable_get('sphinx_default_index', ''));
+}
+
+function _sphinx_get_active_path(){
+	// get the nid of the current node
+	$active_trail = menu_get_active_trail();
+
+	foreach (array_reverse($active_trail) as $item) {
+	    if (!(bool)($item['type'] & MENU_IS_LOCAL_TASK)) {
+	      $active_path = $item['url'];
+	    }
+	  }
+	return $active_path;
+}
+function _sphinx_get_url_alias( $src ){
+    if ( $query = db_query( "SELECT * FROM {url_alias} WHERE src='%s'", $src ) ){
+        if ( $rs = db_fetch_object( $query ) ){
+            return $rs->dst;
+        }
+        else {
+            return $src;
+        }
+    }
+    else {
+        return $src;
+    }
+}
+
+function _sphinx_get_display_type_by_name($index_name = null) {
+  if (!empty($index_name)) {
+    $res = db_query("SELECT display_type FROM {sphinx_indexes} WHERE index_name='%s'", $index_name);
+    $index = db_fetch_object($res);
+    return $index->display_type;
+  }
+}
+
+function _sphinx_get_name_by_iid($iid) {
+  if (!empty($iid)) {
+    $res = db_query("SELECT index_name FROM {sphinx_indexes} WHERE iid='%s'", $iid);
+    $index = db_fetch_object($res);
+    return $index->index_name;
+  }
+}
+
+function _sphinx_get_attr_by_aid($aid = null) {
+  if (!empty($aid)) {
+    $res = db_query('SELECT attribute_name FROM {sphinx_attributes} WHERE aid=%d', $aid);
+    $index = db_fetch_object($res);
+    return $index->attribute_name;
+  }
+}
+
+function _sphinx_get_active_fields_by_iid($iid = null) {
+  if (!empty($iid)) {
+    $output = array();
+    $res = db_query('SELECT fid, field_name FROM {sphinx_fields} WHERE iid=%d && active=1', $iid);
+    while ($fields = db_fetch_object($res)) {
+      $output[$fields->fid] = $fields->field_name;
+    }
+    return $output;
+  }
+}
+
+/**
+ * Page callback that performs most search functions
+ */
+
+function _sphinx_search_page($iid, $needle = null, $feed = null) {
+
+  $parts = explode('?', $_SERVER['REQUEST_URI']);
+  $query = empty($parts[1])?'':'?'.$parts[1];
+  drupal_add_feed($parts[0].'/feed'.$query);
+  drupal_add_css(drupal_get_path('module', 'sphinx') .'/sphinx.css');
+  $output = variable_get('sphinx_searchbox_top_of_page', null)?drupal_get_form('sphinx_search_form', $iid, $needle):'';
+  $sql    = 'SELECT {sphinx_indexes}.*, {sphinx_attributes}.attribute_name AS sort_field FROM {sphinx_indexes} LEFT JOIN {sphinx_attributes} ON default_sort_key_fid = aid WHERE {sphinx_indexes}.iid=%d';
+  
+  $res    = db_query($sql, $iid);
+  $index  = db_fetch_object($res);
+  $client = _sphinx_get_client($index);
+  
+  if (!empty($_GET['as_sk'])) {
+    $sort = _sphinx_get_attr_by_aid($_GET['as_sk']);
+  }
+  else if (!empty($index->sort_field)) {
+    $sort = $index->sort_field;
+  }
+  else {
+    $sort = '';
+  }
+  if (!empty($sort)) {
+    if (!empty($_GET['as_sd'])) {
+      $order = ($_GET['as_sd'] == 'asc') ? 'asc' : 'desc';
+    }
+    elseif (!empty($index->default_sort_order)) {
+      $order = $index->default_sort_order;
+    }
+    else {
+      $order = 'desc';
+    }
+  }
+  $fields = _sphinx_get_active_fields_by_iid($iid);
+  
+  foreach ($fields as $fid => $name) {
+    $term = $_GET['as_f'. $fid];
+    if (!empty($term)) {
+      $needle .= '@'. $name .' '. $term .' ';
+    }
+  }
+  if (!empty($_GET['as_filter'])) {
+    $filter_codes = explode('-', $_GET['as_filter']);
+    $filters = array();
+    for($z=0; $z<count($filter_codes); $z++){
+      $parts = explode('_',$filter_codes[$z]);
+      
+      if(!empty($parts[0]) && !empty($parts[1])) {
+        $attr =  _sphinx_get_attr_by_aid($parts[0]);
+        if(array_key_exists($attr, $filters)){
+          $filters[$attr][] = $parts[1];
+        } else {
+          $filters[$attr] = array($parts[1]);
+        }
+      }
+    }
+  }
+  if (!empty($needle)) {
+    if (isset($_GET['pr_page'])) {
+      $limit = (int)$_GET['pr_page'];
+    }
+    else {
+      $limit = variable_get('sphinx_results_per_page', '10');
+    }
+    // run the search
+    $results = _sphinx_do_search($index, $needle, $sort, $order, $filters, $limit);
+
+
+    if($feed){
+      print _sphinx_node_feed($results[0]['matches']);
+      exit;
+    }
+
+    $output .= theme('sphinx_results',$results[0], $index, $needle);
+    $bottom = !variable_get('sphinx_searchbox_top_of_page', null) || (count($results[0]['matches'])>0);
+    if(variable_get('sphinx_searchbox_bottom_of_page', null) && $bottom) {
+      $output .= drupal_get_form('sphinx_search_form', $iid, $needle);
+    }
+    $output .= _sphinx_pager($results[0], $limit);
+  }
+  return $output;
+}
+
+
+/**
+ * Do the search
+ *
+ *
+ * @param $index
+ *   A sphinx index
+ * @param $needle
+ *   A string containing the word(s) to search for
+
+ * @param $sort
+ *   A string containing instructions for the sorting of results
+ *
+ * @return
+ *   true if the address is in a valid format.
+ */
+function _sphinx_do_search($index, $needle, $sort, $order, $filters = null, $limit) {
+  $client = _sphinx_get_client($index);
+  if (!empty($sort)) {
+    $client->SetSortMode(SPH_SORT_EXTENDED, $sort.' '.$order);
+  } else {
+    $client->SetSortMode(SPH_SORT_RELEVANCE);
+  }
+  if(is_array($filters)){
+    foreach($filters as $attribute => $values){
+      for($x=0; $x<count($values); $x++){
+      	$client->SetFilter( $attribute, array($values[$x]));
+      }
+    }
+  }
+  $client->SetMatchMode(SPH_MATCH_EXTENDED);
+  if (isset($_GET['page'])) {
+    $offset = (int)($_GET['page'] * $limit);
+    $client->SetLimits($offset, intval($limit));
+  }
+  else {
+    $client->SetLimits(0, intval($limit));
+  }
+  $client->AddQuery($needle, $index->index_name);
+  $response = $client->RunQueries();
+  if(!$response){
+		drupal_set_message($client -> GetLastError());
+  }
+  return $response;
+}
+
+/**
+ * Render the search results
+ *
+ *
+ * @param $results
+ *   An array returned by the Sphinx api
+ * @param $needle
+ *   A string containing the word(s) to search for
+ *
+ * @return
+ *   true if the address is in a valid format.
+ */
+function theme_sphinx_results($results, $index, $needle) {
+  $display_type = _sphinx_get_display_type_by_name($index->index_name);
+  $output = '';
+  $GLOBALS['sphinx_feedback_stats'] .= theme_sphinx_feedback($results, $needle);
+  if ($results['total_found'] > 0) {
+    $lines = array();
+    if(is_array($results['matches'])){
+      foreach ($results['matches'] as $k => $v) {
+        unset($entity);
+        switch ($display_type) {
+          case 'nodes':
+            $entity = node_load($k);
+            break;
+          case 'users':
+            $entity = user_load($k);
+            break;      
+        }
+        if (isset($entity)) {
+          if ($index->excerpts) {
+            $client = _sphinx_get_client($index);
+            $fields = _sphinx_excerpt_fields($index->index_name);
+            $excerpt = $client->BuildExcerpts(array($node->title,strip_tags($node->body)), $index->index_name, $needle, $opts = array());
+            $lines[] = theme('sphinx_result', $display_type, $entity, $excerpt, $fields);
+          }
+          else {
+            $lines[] = theme('sphinx_result', $display_type, $entity);
+          }
+        }
+      }
+    }
+  } 
+  if ($results['total_found'] > 0) {
+  	$output .= theme('item_list', $lines);
+  } else {
+	$output .= theme_sphinx_feedback($results, $needle);
+  }
+  return $output;
+}
+
+function theme_sphinx_feedback($results, $needle) {
+  $output = '';
+  $items = array('@needle' => $needle, '@number' => $results['total_found'], '@time' => $results['time'], '@results' => format_plural($results['total_found'], 'result', 'results'));
+  $string = t('Your search for <b>@needle</b> produced @number @results (@time secs.)', $items);
+  $output .= '<div class="sphinx-search-feedback">';
+  $output .= $string;
+  $output .= '</div>';
+  return $output;
+}
+
+function theme_sphinx_result($display_type, $entity, $excerpt = null, $fields = null) {
+  if (is_array($excerpt)) {
+    return theme('sphinx_excerpt_result', $entity, $excerpt, $fields);
+  }
+  else {
+    switch ($display_type){
+      case 'nodes':
+        return node_view($entity, true);
+        break;
+        
+      case 'users':
+        return print_r($entity, true);
+        break;
+    }
+  }
+}
+
+function theme_sphinx_excerpt_result($node, $excerpt, $fields) {
+  $output = '';
+  if (is_array($excerpt)) {
+    $output .= '<div class="sphinx-field-'. $fields[0] .'">'. l($excerpt[0], 'node/'. $node->nid, array('html' => true)) .'</div>';
+    for ($n = 1; $n < count($excerpt); $n++) {
+      $output .= '<div class="sphinx-field-'. $fields[$n] .'">'. $excerpt[$n] .'</div>';
+    }
+  }
+  return $output;
+}
+
+function _sphinx_pager($results, $limit) {
+  if ($results['total'] > 0) {
+    global $pager_total_items, $pager_total, $pager_page_array;
+    $pager_total_items[0] = (int) $results['total'];
+    $pager_total[0] = ceil($results['total'] / $limit);
+    $pager_page_array[0] = max(0, min((int) $_GET['page'], ($pager_total[0] - 1)));
+  }
+  $output = theme('pager');
+  return $output;
+}
+
+/**
+ * FAPI definition for the sphinx search form.
+ *
+ * ...
+ * @ingroup forms
+ * @see sphinx_search_form_validate()
+ * @see sphinx_search_form_submit()
+ */
+function sphinx_search_form($form_state, $iid, $needle) {
+  
+  $sql = 'SELECT * FROM {sphinx_indexes} WHERE iid=%d AND active=1';
+  $result = db_query($sql, $iid);
+  $index = db_fetch_object($result);
+ 
+  $form['sphinx_search']['index_path'] = array(
+    '#type' => 'hidden',
+    '#value' => $index->path,
+		);
+  $form['sphinx_search']['iid'] = array(
+    '#type' => 'hidden',
+    '#value' => $iid,
+  );
+  $form['sphinx_search']['inline'] = array(
+    '#prefix' => '<div class="container-inline">',
+    '#suffix' => '</div>',
+    '#weight' => -15,
+  );
+  $form['sphinx_search']['inline']['searchstring'] = array(
+    '#type' => 'textfield',
+    '#default_value' => $needle,
+    '#required' => false,
+    '#weight' => -12,
+	'#size' => 20,
+  );
+  $form['sphinx_search']['inline']['submit'] = array('#type' => 'submit', '#value' => t('Search'), '#weight' => -10,);
+  $form['sphinx_search']['advanced'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Advanced search'),
+    '#collapsible' => true,
+    '#collapsed' => ($_GET['as'] == 1) ? false : true,
+	'#weight' => -6,
+  );
+  
+  $sql     = 'SELECT aid, attribute_name, display_name FROM {sphinx_attributes} WHERE iid=%d AND active=1';
+  $result  = db_query($sql, $iid);
+  $options = array(0 => '');
+  while ($attributes = db_fetch_object($result)) {
+    
+    $options[$attributes->aid] = $attributes->display_name;
+  }
+  $sql = 'SELECT fid, field_name, display_name FROM {sphinx_fields} WHERE iid=%d AND active=1 ORDER BY weight';
+  $result = db_query($sql, $iid);
+		$count = -40;
+  while ($fields = db_fetch_object($result)) {
+    $form['sphinx_search']['advanced']['field'][$fields->field_name] = array(
+      '#title' => $fields->display_name,
+      '#type' => 'textfield',
+      '#default_value' => (!empty($_GET['as_f'. $fields->fid])) ? $_GET['as_f'. $fields->fid] : '',
+      '#required' => false,
+      '#weight' => $count,
+    );
+  $count+=2;
+  }
+  $form['sphinx_search']['advanced']['sort_key'] = array(
+    '#type' => 'select',
+    '#title' => t('Sort'),
+    '#options' => $options,
+    '#default_value' => (!empty($_GET['as_sk'])) ? $_GET['as_sk'] : '',
+    '#weight' => 50,
+    //'#description' => t('Select what you want to order by'),
+  );
+  $form['sphinx_search']['advanced']['sort_direction'] = array(
+    '#type' => 'select',
+    '#title' => t('Order'),
+    '#options' => array('asc' => t('Ascending'), 'desc' => t('Descending')),
+    '#default_value' => (!empty($_GET['as_sd'])) ? $_GET['as_sd'] : '',
+    '#weight' => 60,
+  );
+  
+  $form['sphinx_search']['advanced']['submit'] = array('#type' => 'submit', '#value' => t('Search'), '#weight' => 100);
+  
+  
+  return $form;
+}
+
+
+function theme_sphinx_search_form($form) {
+  $output = drupal_render($form);
+  return $output;
+}
+
+function sphinx_simple_search_form($form_state, $needle) {
+  
+  $form['sphinx_search']['inline'] = array(
+    '#prefix' => '<div class="container-inline">',
+    '#suffix' => '</div>',
+    '#weight' => -15,
+  );
+  $form['sphinx_search']['inline']['searchstring'] = array(
+    '#type' => 'textfield',
+    '#default_value' => (arg(0)=='search' && $needle?$needle:''),
+    '#required' => false,
+    '#weight' => -12,
+	'#size' => 20,
+  );
+  $form['sphinx_search']['inline']['submit'] = array('#type' => 'submit', '#value' => t('Search'), '#weight' => -10,);
+  return $form;
+}
+
+function sphinx_simple_search_form_submit($form, &$form_state) {
+  $index_name = _sphinx_get_name_by_iid(variable_get('sphinx_default_index', '1'));
+  _sphinx_aliased_goto('find/'. $index_name .'/'. $form_state['values']['searchstring']);
+}
+
+function theme_sphinx_simple_search_form($form) {
+  $output = drupal_render($form);
+  return $output;
+}
+
+
+
+function sphinx_search_form_validate($form, &$form_state) {
+  $search = $form_state['values']['searchstring'];
+  $sql    = 'SELECT fid,field_name FROM {sphinx_fields} WHERE iid=%d AND active=1 ORDER BY weight DESC';
+  $res    = db_query($sql, $form_state['values']['iid']);
+  while ($fields = db_fetch_object($res)) {
+    $field = $form_state['values'][$fields->field_name];
+    if (!empty($field)) {
+      $search .= $field;
+    }
+  }
+  if (empty($search)) {
+    form_set_error($form_state['values']['searchstring'], t('You must enter a search string'));
+  }
+}
+
+function sphinx_search_form_submit($form_id, &$form_state) {
+  $query = _sphinx_build_advanced_query($form_state['values']);
+  _sphinx_aliased_goto('find/'. $form_state['values']['index_path'] .'/'. $form_state['values']['searchstring'], $query);
+}
+
+function _sphinx_build_advanced_query($form_state) {
+  $output = '';
+  $sql    = 'SELECT fid,field_name FROM {sphinx_fields} WHERE iid=%d AND active=1 ORDER BY weight DESC';
+  $res    = db_query($sql, $form_state['values']['iid']);
+  while ($fields = db_fetch_object($res)) {
+    $field = $form_state['values'][$fields->field_name];
+    if (!empty($field)) {
+      $output .= 'as_f'. $fields->fid .'='. $field .'&';
+    }
+  }
+  if ($form_state['values']['sort_key']) {
+    $output .= 'as_sk='. $form_state['values']['sort_key'] .'&as_sd='. $form_state['values']['sort_direction'] .'&';
+  }
+  if (!empty($output)) {
+    return 'as=1&'. substr($output, 0, -1);
+  }
+  else {
+    return null;
+  }
+}
+
+function _sphinx_excerpt_fields($index) {
+  $output = array();
+  $sql    = 'SELECT field_name FROM {sphinx_fields} WHERE iid=%d AND excerpt=1 ORDER BY weight DESC';
+  $res    = db_query($sql, _sphinx_get_index_by_name($index));
+  while ($fields = db_fetch_object($res)) {
+    $output[] = strtolower($fields->field_name);
+  }
+  return $output;
+}
+
+
+function _sphinx_node_feed($results){
+  
+  $namespaces = array('xmlns:dc="http://purl.org/dc/elements/1.1/"');
+
+ 	
+  foreach($results as $key => $value){
+    $item = node_load($key);
+    $link = url("node/$key", array('absolute' => TRUE));
+
+    if ($item_length != 'title') {
+      $teaser = ($item_length == 'teaser') ? TRUE : FALSE;
+
+      // Filter and prepare node teaser
+      if (node_hook($item, 'view')) {
+        $item = node_invoke($item, 'view', $teaser, FALSE);
+      }
+      else {
+        $item = node_prepare($item, $teaser);
+      }
+
+      // Allow modules to change $node->teaser before viewing.
+      node_invoke_nodeapi($item, 'view', $teaser, FALSE);
+    }
+
+    // Allow modules to add additional item fields and/or modify $item
+    $extra = node_invoke_nodeapi($item, 'rss item');
+    $extra = array_merge($extra, array(array('key' => 'pubDate', 'value' => gmdate('r', $item->created)), array('key' => 'dc:creator', 'value' => $item->name), array('key' => 'guid', 'value' => $item->nid .' at '. $base_url, 'attributes' => array('isPermaLink' => 'false'))));
+    foreach ($extra as $element) {
+      if ($element['namespace']) {
+        $namespaces = array_merge($namespaces, $element['namespace']);
+      }
+    }
+
+    // Prepare the item description
+    switch ($item_length) {
+      case 'fulltext':
+        $item_text = $item->body;
+        break;
+      case 'teaser':
+        $item_text = $item->teaser;
+        if ($item->readmore) {
+          $item_text .= '<p>'. l(t('read more'), 'node/'. $item->nid, array('html' => TRUE)) .'</p>';
+        }
+        break;
+      case 'title':
+        $item_text = '';
+        break;
+    }
+
+    $items .= format_rss_item($item->title, $link, $item_text, $extra);
+  }
+
+  $channel_defaults = array(
+    'version'     => '2.0',
+    'title'       => variable_get('site_name', 'Drupal') .' - '. variable_get('site_slogan', ''),
+    'link'        => $base_url,
+    'description' => variable_get('site_mission', ''),
+    'language'    => $locale
+  );
+  $channel = $channel_defaults; //array_merge($channel_defaults, $channel);
+
+  $output = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
+  $output .= "<rss version=\"". $channel["version"] ."\" xml:base=\"". $base_url ."\" ". implode(' ', $namespaces) .">\n";
+  $output .= format_rss_channel($channel['title'], $channel['link'], $channel['description'], $items, $channel['language']);
+  $output .= "</rss>\n";
+
+  drupal_set_header('Content-Type: application/rss+xml; charset=utf-8');
+  print $output;
+}
+
+function _sphinx_get_client($index) {
+  static $client;
+  if(!isset($client)){
+    $client = new SphinxClient();
+	$client->SetServer($index->server, (int) $index->port);
+  }
+  return $client;
+}
+
+function _sphinx_aliased_goto($path = '', $aliased = TRUE, $query = NULL, $fragment = NULL, $http_response_code = 302) {
+
+  if (isset($_REQUEST['destination'])) {
+    extract(parse_url(urldecode($_REQUEST['destination'])));
+  }
+  else if (isset($_REQUEST['edit']['destination'])) {
+    extract(parse_url(urldecode($_REQUEST['edit']['destination'])));
+  }
+
+  $url = url($path, array('query' => $query, 'fragment' => $fragment, 'alias' => $aliased));
+  // Remove newlines from the URL to avoid header injection attacks.
+  $url = str_replace(array("\n", "\r"), '', $url);
+  // Allow modules to react to the end of the page request before redirecting.
+  // We do not want this while running update.php.
+  if (!defined('MAINTENANCE_MODE') || MAINTENANCE_MODE != 'update') {
+    module_invoke_all('exit', $url);
+  }
+
+  // Even though session_write_close() is registered as a shutdown function, we
+  // need all session data written to the database before redirecting.
+  session_write_close();
+
+   header('Location: '. $url, TRUE, $http_response_code);
+
+  // The "Location" header sends a redirect status code to the HTTP daemon. In
+  // some cases this can be wrong, so we make sure none of the code below the
+  // drupal_goto() call gets executed upon redirection.
+  exit();
+}
+

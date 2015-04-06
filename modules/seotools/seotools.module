@@ -1,0 +1,166 @@
+<?php
+// $Id: seotools.module,v 1.2.2.3 2011/01/05 22:29:29 tomdude48 Exp $
+
+DEFINE(SEOTOOLS_REPORT_DASHBOARD_STYLE_DEFAULT, 'simple');
+DEFINE(SEOTOOLS_REPORT_DASHBOARD_ROWS_DEFAULT, 5);
+DEFINE(SEOTOOLS_REPORT_STYLE_DEFAULT, 'full');
+DEFINE(SEOTOOLS_REPORT_ROWS_DEFAULT, 20);
+
+include_once('seotools.features.inc');
+
+/**
+ *  Implementation of hook_menu()
+ *
+ */
+function seotools_menu() {
+  $items = array();
+  $items['admin/settings/seotools'] = array(
+    'title' => 'SEO Tools',
+    'description' => 'Analyze and optimize node content.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('seotools_admin_settings'),
+    'access callback' => 'user_access',
+    'access arguments' => array('admin seo tools'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'seotools.admin.inc',
+  );
+
+  $items['admin/content/seotools'] = array(
+    'title' => 'SEO Tools',
+    'description' => 'View the dashboard for SEO Tools.',
+    'page callback' => 'seotools_dashboard_page',
+    'access callback' => 'user_access',
+    'access arguments' => array('access seo tools'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'seotools.report.inc',
+  );
+  $w = 0;
+  $items['admin/content/seotools/dashboard'] = array(
+    'title' => 'Dashboard',
+    'description' => 'View the dashboard for SEO Tools.',
+    'page callback' => 'seotools_dashboard_page',
+    'page argument' => array(3),
+    'access callback' => 'user_access',
+    'access arguments' => array('access seo tools'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => $w++,
+    'file' => 'seotools.report.inc',    
+  );
+  $items['admin/content/seotools/keywords'] = array(
+    'title' => 'Keywords',
+    'description' => 'View the dashboard for SEO Tools.',
+    'page callback' => 'seotools_dashboard_page',
+    'page arguments' => array(3),
+    'access callback' => 'user_access',
+    'access arguments' => array('access seo tools'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => $w++,
+    'file' => 'seotools.report.inc',  
+  );
+  $items['admin/content/seotools/entrances'] = array(
+    'title' => 'Entrances',
+    'description' => 'View the dashboard for SEO Tools.',
+    'page callback' => 'seotools_dashboard_page',
+    'page arguments' => array(3),
+    'access callback' => 'user_access',
+    'access arguments' => array('access seo tools'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => $w++,
+    'file' => 'seotools.report.inc',
+  );
+  $items['admin/content/seotools/sources'] = array(
+    'title' => 'Sources',
+    'description' => 'View the dashboard for SEO Tools.',
+    'page callback' => 'seotools_dashboard_page',
+    'page arguments' => array(3),
+    'access callback' => 'user_access',
+    'access arguments' => array('access seo tools'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => $w++,
+    'file' => 'seotools.report.inc',  
+  );
+  $items['admin/content/seotools/referrers'] = array(
+    'title' => 'Referrers',
+    'description' => 'View the dashboard for SEO Tools.',
+    'page callback' => 'seotools_dashboard_page',
+    'page arguments' => array(3),
+    'access callback' => 'user_access',
+    'access arguments' => array('access seo tools'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => $w++,
+    'file' => 'seotools.report.inc',  
+  );
+  $items['admin/content/seotools/pageviews'] = array(
+    'title' => 'Views',
+    'description' => 'View the dashboard for SEO Tools.',
+    'page callback' => 'seotools_dashboard_page',
+    'page arguments' => array(3),
+    'access callback' => 'user_access',
+    'access arguments' => array('access seo tools'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => $w++,
+    'file' => 'seotools.report.inc',  
+  );
+  
+  $items['seotools/util'] = array(
+    'title' => 'SEO Tools Util',
+    'description' => 'Analyze and optimize node content.',
+    'page callback' => 'seotools_util',
+    'access callback' => 'user_access',
+    'access arguments' => array('admin seo tools'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+function seotools_util() {
+  $params = array(
+    'metrics' => array('ga:visits'),
+    'dimensions' => array('ga:date'),
+    'sort_metric' => array('ga:date'),
+    'start_date' => strtotime('-31 days'),
+    'end_date' => strtotime('-1 day'),
+  );
+dsm($params);
+  $feed = google_analytics_api_report_data($params);
+  if ($feed->error) {
+    return FALSE;
+  }
+  $max_visits = 0;
+  foreach ($feed->results as $row) {
+    $data[] = $row['visits'];
+    $max_visits = max($row['visits'], $max_visits);
+  }
+  $chart = array(
+    '#chart_id' => 'visits_large_30d',
+    '#data' => $data,
+    '#type' => CHART_TYPE_LINE . ':nda',
+    '#size' => chart_size(1000, 80),
+    '#adjust_resolution' => TRUE,
+    '#data_colors' => array('AAAAAA'),
+    '#chart_fill' => chart_fill('bg', '00000000'),
+    '#shape_markers' => array(chart_shape_marker(0, 0, 'B', 0, $color = 'EEEEEE')),
+    '#line_styles' => array(chart_line_style(2, 10, 0)),
+  );
+  $last_day = end($feed->results);
+  $title = t('The most visits on a single day was @max.  Yesterday there were @yesterday visits.', array('@max' => $max_visits, '@yesterday' => $last_day['visits']));
+  $output = chart_render($chart, array('title' => $title, 'style' => 'height:' . $chart['#size']['#height'] . 'px; width:100%'));
+  return $output;
+  return $output;
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function seotools_perm() {
+  return array('admin seo tools', 'access seo tools');
+}
+
+/**
+ * Implementation of hook_presets().
+ *
+ */
+function seotools_presets() {
+  include_once(drupal_get_path('module', 'seotools') . '/plugins/seotools.presets.inc');
+  return _seotools_presets();
+}

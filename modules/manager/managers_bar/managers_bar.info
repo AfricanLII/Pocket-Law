@@ -1,0 +1,13 @@
+; $Id: managers_bar.info,v 1.2 2009/11/05 20:56:59 franz Exp $
+name = Manager's Bar 
+description = Adds a nice manager-friendly bar on the top of the site.
+core = 6.x
+package = Manager
+dependencies[] = manager
+
+; Information added by drupal.org packaging script on 2010-05-25
+version = "6.x-1.0-rc3"
+core = "6.x"
+project = "manager"
+datestamp = "1274809207"
+

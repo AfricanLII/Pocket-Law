@@ -1,0 +1,561 @@
+<?php
+
+
+/**
+ * Implementation of hook_node_info().
+ */
+function nodetemplate_node_info() {
+	return array(
+    'nodetemplate' => array(
+      'name' => t('Node template'),
+      'module' => 'nodetemplate',
+      'description' => t("Allows users to duplicate an existing node and set it as a template."),
+	)
+	);
+}
+
+/**
+ * Implementation of hook_help().
+ */
+function nodetemplate_help($path, $arg) {
+	switch ($path) {
+		case 'admin/help#nodetemplate':
+			$output = '<p>'. t('The node template module allows users to make any existing node and use it as a template. The authorship is set to the current user, the menu and url aliases are reset, and the words "Clone of" are inserted into the title to remind you that you are not editing the original node.') .'</p>';
+			$output .= '<p>'. t('Users with the "node template" permission can utilize this functionality. A tab named "Set template" will appear on every editable pages. Once you click this tab you have <em>already</em> created a new node that is a copy of the node you were viewing, and you will be redirected to an edit screen for that new node.') .'</p>';
+			return $output;
+		case 'admin/modules#description':
+			return t('Allows users to duplicate an existing node and set it as a template.');
+	}
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function nodetemplate_perm() {
+	return array('access node template','delete node template of others','share node template');
+}
+
+/**
+ * Implementation of hook_access().
+ */
+function nodetemplate_access($op, $node) {
+	$result = false;
+	switch ($op) {
+		case 'view': 
+		$result = user_access('access node template') && node_access('view',$node->type);
+		break;
+		case 'create':
+		$result = user_access('access node template') && filter_access($node->format) && node_access('create',$node->type);	
+	}
+	
+	return $result;
+
+	//return array('access node template','delete node template of others','share node template');
+}
+
+
+/**
+ * Implementation of hook_menu().
+ */
+function nodetemplate_menu() {
+	$items = array();
+
+	$items['nodetemplates'] = array(
+      'title' => 'My node templates',
+      'page callback' => 'nodetemplate_admin', 
+      'access arguments' => array('access node template'));
+
+	$items['nodetemplates/list'] = array(
+      'title' => 'List',
+      'type' => MENU_DEFAULT_LOCAL_TASK, 
+      'weight' => -10);
+
+	$items['nodetemplates/configure'] = array(
+      'title' => 'Configure',
+      'page callback' => 'nodetemplate_configure', 
+      'access arguments' => array('access node template'),
+      'type' => MENU_LOCAL_TASK);
+
+	$items['nodetemplates/delete'] = array(
+      'title' => 'Delete',
+      'page callback' => 'nodetemplate_delete', 
+      'access arguments' => array('access node template'),
+      'type' => MENU_CALLBACK);
+
+	$items['nodetemplates/share'] = array(
+      'title' => 'Share',
+      'page callback' => 'nodetemplate_share', 
+      'access arguments' => array('share node template'),
+      'type' => MENU_CALLBACK);
+
+	$items['admin/settings/nodetemplate'] = array(
+    	'title' => 'Node template',
+    	'description' => 'Set up the confirmation option when duplicating a node and the option to duplicate a book page with its all children.',
+    	'page callback' => 'drupal_get_form',
+    	'page arguments' => array('nodetemplate_admin_settings'),
+    	'access arguments' => array('access node template'),
+    	'type' => MENU_NORMAL_ITEM);
+
+	// Dynamic menu binding
+
+	$items['node/%node/template'] = array(
+                          'title' => 'Set template',
+                          'page callback' => 'drupal_get_form',
+                          'page arguments' => array('nodetemplate_confirm', 1),
+                          'access callback' => 'nodetemplate_access',
+    					  'access arguments' => array('view',1),
+                          'type' => MENU_LOCAL_TASK, 
+                          'weight' => 5);
+
+	$items['node/%node/template/clone'] = array(
+                          'title' => 'Set template',
+						  'page callback' => 'drupal_get_form',
+                          'page arguments' => array('nodetemplate_confirm', 1, TRUE),
+						  'access callback' => 'nodetemplate_access',
+                          'access arguments' => array('create',1),
+                          'type' => MENU_CALLBACK, 
+                          'weight' => 5);  
+
+	return $items;
+}
+
+
+/**
+ * Implementation of hook_admin_settings().
+ */
+function nodetemplate_admin_settings() {
+
+	$form['heading'] = array(
+    '#value' => '<b>'.t('Configuration options for the node template module:').'</b>',
+	);
+
+	$form['node_template_without_confirm'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Set template needs no confirmation'),
+    '#default_value' => variable_get('node_template_without_confirm', FALSE),
+    '#description' => t('If this is set, a new node will be created immediately after clicking the "set template" tab when viewing a node.'),
+	);
+
+	$form['node_template_without_clone'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Set template but without duplicating the node'),
+    '#default_value' => variable_get('node_template_without_clone', TRUE),
+    '#description' => t('If this is set, a new node will be created immediately after clicking the "set template" tab when viewing a node.'),
+	);
+
+	$form['node_template_with_child'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Book pages should be duplicated with all the children'),
+    '#default_value' => variable_get('node_template_with_child', FALSE),
+    '#description' => t('If this is set, a new book page with all the children will be created after clicking the "set template" tab when viewing a node.'),
+	);
+
+	$form['publishing'] = array(
+    '#type' => 'fieldset',
+    '#title' => '<b>'.t('Should the publishing options ( e.g. published, promoted, etc) be reset to the defaults?').'</b>',
+	);
+
+	foreach (node_get_types() as $type) {
+		if ( strcmp(check_plain($type->name),"Node template") != 0 ){
+			$form['publishing']['clone_reset_'. check_plain($type->type)] = array(
+      			'#type' => 'checkbox',
+      			'#title' => t('%s: reset publishing options when duplicated', array('%s' => check_plain($type->name))),
+      			'#default_value' => variable_get('clone_reset_'. check_plain($type->type), FALSE),
+			);
+		}
+	}
+
+	return system_settings_form($form);
+}
+
+/**
+ *  Menu callback: prompt the user to confirm the operation
+ */
+function nodetemplate_confirm($form_state, $node, $copyonly = FALSE) {
+	if (variable_get('node_template_without_confirm', FALSE)) {
+		if (!$copyonly) {
+			if (variable_get('node_template_without_clone', TRUE)) {
+				//$nid = $form_values['nid'];
+				$nid = $node->nid;
+				$existed_node = db_result(db_query("SELECT COUNT(*) FROM {node_template} WHERE nid = %d", $nid));
+				if ($existed_node > 0) {
+					db_query('UPDATE {node_template} SET is_template = 1 WHERE nid = %d', $nid);
+				} else {
+					$data = array(
+						'nid' => $nid,
+    					'is_template' => 1,
+    					'shared' => 0
+					);
+					drupal_write_record('node_template', $data);
+
+					//db_query("INSERT INTO {node_template} (nid, is_template, shared) VALUES (%d, %d, %d)", $nid, 1, 0);
+				}
+				drupal_goto('node/'.$nid);
+			} else {
+				duplicate_node($node->nid);
+			}
+		} else {
+			duplicate_node($node->nid);
+		}
+	}
+	else {
+		//$node = node_load($nid);
+		//$node = $nid;
+		//print_r($nid);
+		$title = ($copyonly)?
+		t('Do you really want to duplicate >%title< ?', array('%title' => $node->title)):
+		t('Do you really want to set >%title< as a template?', array('%title' => $node->title));
+
+		$description = (variable_get('node_template_without_clone', TRUE))?
+		t('This action will set the current node as template without duplicating it now, and then you can duplicate the node later.'):
+		t('This action will create a new node or a set of book pages, and then you will be redirected to editing the new node.');
+
+		if ($copyonly) {
+			$description = t('This action will create a new node or a set of book pages, and then you will be redirected to editing the new node.');
+		}
+		$description = '<p>'.$description.'</p>';
+
+		$path = 'node/'.$node->nid;
+		$form['nid'] = array('#type' => 'value', '#value' => $node->nid);
+		$form['copyonly'] = array('#type' => 'value', '#value' => $copyonly);
+
+		return confirm_form($form, $title, $path, $description, t('Next'), t('Cancel'));
+	}
+}
+
+/**
+ *  Handle confirm form submission
+ */
+function nodetemplate_confirm_submit($form, &$form_state) {
+	if ($form_state['values']['confirm']) {
+		if (!$form_state['values']['copyonly']) {
+			if (variable_get('node_template_without_clone', TRUE)) {
+				$nid = $form_state['values']['nid'];
+				$existed_node = db_result(db_query("SELECT COUNT(*) FROM {node_template} WHERE nid = %d", $nid));
+				if ($existed_node > 0) {
+					db_query('UPDATE {node_template} SET is_template = 1 WHERE nid = %d', $nid);
+				} else {
+					$data = array(
+						'nid' => $nid,
+    					'is_template' => 1,
+    					'shared' => 0
+					);
+					drupal_write_record('node_template', $data);
+					//db_query('INSERT INTO {node_template} (nid, is_template, shared) VALUES (%d, %d, %d)', $nid, 1, 0);
+				}
+				drupal_goto('node/'.$nid);
+			} else {
+				duplicate_node($form_state['values']['nid']);
+			}
+		} else {
+			duplicate_node($form_state['values']['nid']);
+		}
+	}
+	return;
+}
+
+/**
+ *  Clones a node
+ */
+function duplicate_node($nid) {
+	if (is_numeric($nid)) {
+		global $user;
+
+		$existed_node = db_result(db_query("SELECT COUNT(*) FROM {node_template} WHERE nid = %d", $nid));
+		if ($existed_node > 0) {
+			db_query('UPDATE {node_template} SET is_template = 1 WHERE nid = %d', $nid);
+		} else {
+			$data = array(
+						'nid' => $nid,
+    					'is_template' => 1,
+    					'shared' => 0
+			);
+			drupal_write_record('node_template', $data);
+			//db_query("INSERT INTO {node_template} (nid, is_template, shared) VALUES (%d, %d, %d)", $nid, 1, 0);
+		}
+
+		$parents = array();
+		$oldnode = node_load($nid);
+
+		if ($oldnode->type == "book") {
+			$pages = array();
+			$pages = book_tree_travel($nid,$pages,true);
+
+			$first_time = true;
+			if (count($pages)>0 && variable_get('node_template_with_child', TRUE)) {
+				foreach ($pages as $ori_node){
+					$node = node_load($ori_node->nid,NULL,TRUE);
+					//watchdog('content', 'node_duplicate: duplicating %subject.', array('%subject' => theme('placeholder', $ori_node->nid)), WATCHDOG_WARNING);
+					if (isset($node->nid)) {
+
+						$node->nid = NULL;
+						$node->uid = $user->uid;
+						$node->created = 0;
+						$node->menu = NULL;
+						$node->path = NULL;
+
+						if ($first_time) {
+							$node->title = t('Clone of '.$node->title);
+							$first_time = false;
+						}
+
+						if (variable_get('clone_reset_'. $node->type, FALSE)) {
+							$node_options = variable_get('node_options_'. $node->type, array('status', 'promote'));
+							// fill in the default values
+							foreach (array('status', 'moderate', 'promote', 'sticky', 'revision') as $key) {
+								$node->$key = in_array($key, $node_options);
+							}
+						}
+						node_save($node);
+						$parents[$ori_node->nid] = $node->nid;
+					}
+				}
+				reset($parents);
+				foreach ($parents as $old_node_id => $node_id){
+					//watchdog('content', 'node_duplicate: updating %subject.', array('%subject' => theme('placeholder', $node_id)), WATCHDOG_WARNING);
+					$newnode = node_load($node_id,NULL,TRUE);
+					if (array_key_exists($newnode->bid, $parents)){
+						$newnode->bid = $parents[$newnode->bid];
+						if ($newnode->revision) {
+
+							drupal_write_record('book', $newnode);
+
+							//db_query("INSERT INTO {book} (nid, vid, parent, weight) VALUES (%d, %d, %d, %d)", $newnode->nid, $newnode->vid, $newnode->parent, $newnode->weight);
+						}
+						else {
+							db_query("UPDATE {book} SET bid = %d, weight = %d WHERE nid = %d",
+							$newnode->bid, $newnode->weight, $newnode->nid);
+						}
+					}
+				}
+			}
+
+			reset($parents);
+			drupal_goto('node/'. current($parents).'/edit');
+
+		}
+		else {
+
+			if (isset($oldnode->nid)) {
+				$oldnode->nid = NULL;
+				$oldnode->uid = $user->uid;
+				$oldnode->created = 0;
+				$oldnode->menu = NULL;
+				$oldnode->path = NULL;
+				$oldnode->title = t('Clone of '.$oldnode->title);
+
+				if (variable_get('clone_reset_'. $oldnode->type, FALSE)) {
+					$node_options = variable_get('node_options_'. $oldnode->type, array('status', 'promote'));
+					// fill in the default values
+					foreach (array('status', 'moderate', 'promote', 'sticky', 'revision') as $key) {
+						$oldnode->$key = in_array($key, $node_options);
+					}
+				}
+				node_save($oldnode);
+				drupal_goto('node/'. $oldnode->nid.'/edit');
+			}
+		}
+	}
+}
+
+/**
+ *  find all the children of a book node
+ */
+function book_tree_travel($nid, $pages = array(), $include_father = false) {
+	if ($include_father) {
+		$result = db_query(db_rewrite_sql('SELECT n.nid FROM {node} n WHERE n.nid = %d AND n.moderate = 0'), $nid);
+		while ($page = db_fetch_object($result)) {
+			$pages[] = $page;
+		}
+	}
+
+	$children = db_query(db_rewrite_sql('SELECT n.nid FROM {node} n INNER JOIN {book} b ON n.vid = b.nid WHERE n.status = 1 AND b.bid = %d AND n.moderate = 0'), $nid);
+	while ($childpage = db_fetch_object($children)) {
+		$pages[] = $childpage;
+		$pages = book_tree_travel($childpage->nid, $pages);
+	}
+
+	return $pages;
+}
+
+/********************************************************************
+ * Module Functions :: Controllers
+ ********************************************************************/
+
+function nodetemplate_admin() {
+	global $user;
+
+	$title = t('Node template') . ' : ' . $user->name;
+	drupal_set_title($title);
+	$output = nodetemplate_list();
+	return $output;
+}
+
+/**
+ * The configuration page.
+ */
+function nodetemplate_configure_page(&$form_state) {
+	global $user;
+	$form = array();
+	$form['maxnodes'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Number of items'),
+    '#description' => t('Maximum number of items to display.'),
+    '#default_value' => isset($user->nodetemplate['default']['maxnodes']) ? $user->nodetemplate['default']['maxnodes'] : 50,
+    '#size' => 4
+	);
+
+	$form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save configuration')
+	);
+	return $form;
+}
+
+function nodetemplate_configure() {
+	global $user;
+	drupal_set_title(t('Node template : %username', array('%username' => $user->name)));
+	return drupal_get_form('nodetemplate_configure_page');
+}
+
+function nodetemplate_configure_page_validate($form, &$form_state) {
+	if (!is_numeric($form_state['values']['maxnodes'])) {
+		form_set_error('maxnodes', t('Please enter a numeric value.'));
+	}
+}
+
+function nodetemplate_configure_page_submit($form, &$form_state) {
+	global $user;
+	if (!isset($user->nodetemplate)) {
+		$user->nodetemplate = array();
+	}
+	$user->nodetemplate['default']['maxnodes'] = $form_state['values']['maxnodes'];
+
+	user_save($user, array('nodetemplate' => $user->nodetemplate));
+	drupal_set_message(t('The node template configuration has been saved.'));
+	//return '';
+}
+
+/********************************************************************
+ * Module Functions :: Views
+ ********************************************************************/
+
+/**
+ * The default admin interface is a list of content.
+ */
+function nodetemplate_list() {
+	global $user;
+	$maxnodes = isset($user->nodetemplate) ? $user->nodetemplate['default']['maxnodes'] : 50;
+
+	if (!is_numeric($maxnodes)) {$maxnodes = 50;}
+
+	$node_select = array('n.nid', 'n.uid', 'n.type', '0 AS cid','1 AS node', 'n.title', 'n.status', 'n.changed', 's.shared');
+	$node_from = array('{node} n');
+	$node_join = array('INNER JOIN {node_template} s ON n.nid = s.nid');
+	$node_where = array('s.is_template = 1');
+
+	$sql = 'SELECT '. implode(', ', $node_select) .' FROM '. implode(', ', $node_from) .' '. implode(' ', $node_join) .' WHERE '. implode(' ', $node_where);
+	$count_sql = 'SELECT COUNT(n.nid) FROM '. implode(', ', $node_from) .' '. implode(' ', $node_join) .' WHERE '. implode(' ', $node_where);
+
+	// build the combined template listing
+	$header = array(
+	array('data' => t('Type'), 'field' => 'type'),
+	array('data' => t('Title'), 'field' => 'title'),
+	array('data' => t('Owner'), 'field' => 'uid'),
+	array('data' => t('Published'), 'field' => 'status'),
+	array('data' => t('Modified'), 'field' => 'changed', 'sort' => 'desc'),
+	array('data' => t('Shared'), 'field' => 'shared'),
+	array('data' => t('Operations'), 'colspan' => 3)
+	);
+
+	$result = pager_query($sql . tablesort_sql($header), $maxnodes, 0, $count_sql);
+	$yes = t('yes');
+	$no = t('no');
+	$shared_mark = t('*');
+
+	/* Thanks to WorldFallz for his contribution of this part. */
+	while ($row = db_fetch_object($result)) {
+		// it's a node
+		if ($row->node == 1) {
+
+			$shared = db_result(db_query('SELECT shared FROM {node_template} WHERE nid = %d', $row->nid));
+			if (($row->uid == $user->uid) || ($user->uid == 1)) {
+				$access = true;
+			}
+			else {
+				$access = (filter_access($row->format) && node_access('create',$row->type) && node_access('view', $row) && $shared);
+			}
+
+			//only list node if user has access
+			if ($access) {
+
+				// Duplicate permissions are set by the nodetype's access hook.
+				// This approach is part of Drupal's core design.
+
+				$can_delete = ($user->uid == $row->uid)? TRUE : FALSE;
+				if (user_access('delete node template of others')) $can_delete = TRUE;
+
+				$can_share = user_access('share node template') && ($row->uid == $user->uid);
+
+				// the name of the owner of this node
+				$owner = ($user->uid == $row->uid) ? $user->name : db_result(db_query('SELECT name FROM {users} WHERE uid = %d', $row->uid));
+				$sharetitle = ($shared == 0)? t('share'):t('unshare');
+					
+				//if (($user->uid == $row->uid) || ($shared == 1) || ($user->uid == 0))
+				$rows[] = array(
+				node_get_types('name', $row->type),
+				l($row->title, "node/$row->nid"),
+				$owner,
+				$row->status ? $yes : $no,
+				format_date($row->changed, 'small'),
+				$row->shared ? $shared_mark : '',
+				l(t('duplicate'), "node/$row->nid/template/clone"),
+				$can_delete? l(t('delete'), "nodetemplates/delete/$row->nid") : '',
+				$can_share? l($sharetitle, "nodetemplates/share/$row->nid") : ''
+				);
+			}
+		}
+	}
+
+	if ($rows) {
+		$pager = theme('pager', NULL, $maxnodes, 0);
+		if (!empty($pager)) {
+			$rows[] = array(array('data' => $pager, 'colspan' => 8));
+		}
+		$output .= theme('table', $header, $rows);
+	}
+	else {
+		$output .= t('You have no node template yet.');
+	}
+
+	return $output;
+}
+
+/**
+ * The deletion menu callback
+ */
+function nodetemplate_delete() {
+	global $user;
+	$nid = intval(arg(2));
+	$uid = db_result(db_query('SELECT uid FROM {node} WHERE nid = %d', $nid));
+	$can_delete = ($user->uid == $uid)? TRUE : FALSE;
+	if (user_access('delete node template of others')) $can_delete = TRUE;
+	if ( is_numeric($nid) && $can_delete ) {
+		db_query('DELETE FROM {node_template} WHERE nid = %d', $nid);
+	}
+	drupal_goto('nodetemplates');
+}
+
+
+/**
+ * The share menu callback
+ */
+function nodetemplate_share() {
+	$nid = intval(arg(2));
+	if ( is_numeric($nid) ) {
+		$shared = db_result(db_query('SELECT shared FROM {node_template} WHERE nid = %d', $nid));
+		$shared = ($shared == 0)? 1:0;
+		db_query('UPDATE {node_template} SET shared = %d WHERE nid = %d', $shared, $nid);
+	}
+	drupal_goto('nodetemplates');
+}

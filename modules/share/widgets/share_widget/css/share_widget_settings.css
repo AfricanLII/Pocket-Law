@@ -1,0 +1,25 @@
+
+div.tab-enabled {
+  float: left;
+  margin-right: 5px;
+}
+div.tab-title {
+  cursor: pointer;
+  text-decoration: none;
+  font-weight: bold;
+}
+div.tab-title:hover {
+  text-decoration: underline;
+}
+div.tab-title.collapsed {
+  background: url('/themes/garland/images/menu-collapsed.gif') no-repeat scroll 20px 6px;
+}
+div.tab-title.expanded {
+  background: url('/themes/garland/images/menu-expanded.gif') no-repeat scroll 20px 5px;
+}
+div.tab-weight {
+  padding-right: 20px;
+}
+div.tab-settings {
+  clear: both;
+}

@@ -1,0 +1,13 @@
+name = ShareThis widget
+description = "Provides the ability to use ShareThis."
+dependencies[] = share
+dependencies[] = sharethis
+package = Share
+core = 6.x
+
+; Information added by drupal.org packaging script on 2011-03-15
+version = "6.x-2.x-dev"
+core = "6.x"
+project = "share"
+datestamp = "1300148343"
+

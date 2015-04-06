@@ -1,0 +1,259 @@
+<?php
+include 'preg_find.php';
+
+function caseimport_help($path, $arg) {
+  $output = '';  //declare your output variable
+  switch ($path) {
+    case "admin/help#caseimport":
+      $output = '<p>'.  t("bulk imports case law") .'</p>';
+      break;
+  }
+  return $output;
+} // function caseimport_help
+
+/**
+ * Implementation of hook_theme().
+ */
+function caseimport_theme($path, $args) {
+  return array(
+    'indexpage_term' => array(
+      'arguments' => array('term', 'type'),
+      ),
+    );
+}
+
+/**
+
+/**
+* Valid permissions for this module
+* @return array An array of valid permissions for the onthisdate module
+*/
+function caseimport_perm() {
+  return array('access caseimport', 'create caseimport', 'administer caseimport');
+} // function caseimport_perm()
+
+function caseimport_menu() {
+$items = array();
+
+//Link to the propertydata_import admin page:
+$items['admin/caseimport'] = array(
+'title' => 'Import case data into Drupal',
+'description' => 'Import case data into Drupal',
+'page callback' => 'caseimport_callback',
+'access arguments' => array('administer caseimport'),
+'type' => MENU_NORMAL_ITEM,
+);
+
+/*$items['admin/settings/caseimport'] = array(
+      'title' => 'CaseImport',
+      'description' => 'CaseImport settings.',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('caseimport_admin_settings'),
+      'access arguments' => array('administer site configuration'),
+      'type' => MENU_NORMAL_ITEM,
+      'file' => 'caseimport.admin.inc',
+      );
+*/
+return $items;
+}
+
+function get_string_between($string, $start, $end){
+        $string = " ".$string;
+        $ini = strpos($string,$start);
+        if ($ini == 0) return "";
+        $ini += strlen($start);
+        $len = strpos($string,$end,$ini) - $ini;
+        return substr($string,$ini,$len);
+}
+
+function caseimport_callback() {
+  // what user id should the files be imported as?
+    $uid = 1;
+    // prevent this from running under apache:
+//    if (array_key_exists('REQUEST_METHOD', $_SERVER)) {
+ //       echo 'nope.  not executing except from the command line.';
+  //      exit(1);
+   // }
+
+    // set HTTP_HOST or drupal will refuse to bootstrap
+    $_SERVER['HTTP_HOST'] = 'www.swazilii.org';
+    include_once 'includes/bootstrap.inc';
+    drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+    // create a user that will be the author of the files/nodes
+    // created
+
+    global $user;
+    $user = user_load($uid);
+
+// open csv file
+$fullpath = "/var/www/drupal-multisite/files/sz/saflii_imports/SwaziLII2005/";
+$row=0;
+if (($handle = fopen("/var/www/drupal-multisite/files/sz/saflii_imports/SwaziLII2005/SwaziLII_Metadata_Final_2005.csv", "r")) !== FALSE) {
+    while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+        $num = count($data);
+//        echo "<p> $num fields in line $row: <br /></p>\n";
+	if($row == 0) {
+        	$row++;  
+	}else {
+     //   for ($c=0; $c < $num; $c++) {
+//            echo $data[$c] . "<br />\n";
+		$year = $data[0];
+		$jno = $data[1];
+		$title = $data[2];
+		$caseno = $data[3];
+		$judgment_date = $data[4];
+		$jdate = strtotime($judgment_date);
+		$unixdate = date("Y-m-d H:i:s", $jdate);
+		$mnc = $data[5];
+		$judges = $data[6];
+		$keywords = $data[7];
+		$courtname = $data[8];
+		$base_pdf_file = $data[9];
+		$pdf_file = $fullpath . $base_pdf_file;
+		$base_html_file = $data[10];
+		$html_file = $fullpath . $base_html_file;
+		$base_doc_file = $data[11];
+		$doc_file = $fullpath . $base_doc_file;
+		switch ($courtname) {
+                case "High Court":
+                $courtabbr = "SZHC";
+                $cname = "high-court";
+                $tid = 5;
+                break;
+                case "Industrial Court of Appeal":
+                $courtabbr = "SZICA";
+                $cname = "industrial-court-appeal";
+                $tid = 1;
+                break;
+                case "Supreme Court":
+                $courtabbr = "SZSC";
+                $cname = "supreme-court";
+                $tid = 3;
+                break;
+                case "Industrial Court":
+                $courtabbr = "SZIC";
+                $cname = "industrial-court";
+                $tid = 6;
+                break;
+}
+	echo "year: $year judgment no: $jno judgment name: $title caseno: $caseno judgment date: $judgment_date judges: $judges keywords: $keywords mnc: $mnc courtname: $courtname cname: $cname pdf: $base_pdf_file html $base_html_file html with path: $html_file doc: $base_doc_file\n";
+	echo "judgment date: $judgment_date jdate: $jdate unixdate: $unixdate\n";
+	$row++;
+/*	
+	$fh = fopen($html_file, "r") or die ("Can't open file $html_file");
+	$fullstring = fread($fh, filesize($html_file));
+ 
+	$node = new stdClass();
+	$node->uid = 1;
+	$node->name = $title;
+	$node->title = $title;
+	$node->body = $fullstring;		
+	$node->type = 'judgment';
+	$node->created = time();
+	$node->changed = $node->created;
+	$node->promote = 0;
+	$node->sticky = 0;
+	$node->format = 4;
+	$node->status = 1;
+	$node->language = 'en';
+	$node->field_courtname[0]['value'] = $courtname;
+        $node->field_mnc[0]['value'] = $mnc;
+        $node->field_jdate[0]['value'] = $jdate;
+        $node->field_judge[0]['value'] = $judges;
+        $node->field_jno[0]['value'] = $jno;
+        $node->field_caseno[0]['value'] = $caseno;
+
+	if(file_exists($pdf_file)) {
+        $pdf_filesize = filesize($pdf_file);
+//      $dest = file_directory_path();
+        $dest = "/var/www/drupal-multisite/files";
+        echo "dest: $dest\n";
+        $target = "sz/judgment/" . $cname . "/" . $year . "/" . $jno . "/";
+        // if new directory path does not exist, create it
+        $new_dir_path = $dest . "/" . $target;
+        if(!file_check_directory($new_dir_path, $mode = FILE_CREATE_DIRECTORY))
+        {
+                echo "failed to create directory: $new_dir_path\n";
+        }
+        else
+        {
+                echo "created directory: $new_dir_path\n";
+        }
+
+        }
+
+	// Copy the file to the Drupal files directory 
+        if(!file_copy($pdf_file,$target)) {
+                echo "Failed to move file: $pdf_file.\n";
+        //      return;
+        } else {
+                echo "copied file: $pdf_file.\n";
+        // file_move might change the name of the file
+                $fname = basename($pdf_file);
+        }
+	$pdffile = new stdClass();
+        $pdffile->filename = $fname;
+        $pdffile->filepath = $target .$fname;
+        $pdffile->filemime = file_get_mimetype($fname);
+        $pdffile->filesize = filesize($fname);
+        $pdffile->filesource = $fname;
+        $pdffile->uid = 1;
+        $pdffile->status = FILE_STATUS_TEMPORARY;
+        $pdffile->timestamp = time();
+        $pdffile->list = 1;
+        $pdffile->description = $fname;
+        $pdffile->new = true;
+
+        drupal_write_record('files', $pdffile);
+        file_set_status($pdffile,1);
+        $node->files[$pdffile->fid] = $pdffile;
+        }
+
+	if(file_exists($doc_file)) {
+        $doc_filesize = $details['size'];
+        $dest = file_directory_path();
+        $target = "sz/judgment/" . $cname . "/" . $year . "/" . $jno . "/";
+        // if new directory path does not exist, create it
+        $new_dir_path = $dest . "/" . $target;
+        file_check_directory($new_dir_path, $mode = FILE_CREATE_DIRECTORY);
+
+        //copy the file to the Drupal files directory
+        if(!file_copy($doc_file,$target)) {
+                echo "Failed to move file: $doc_file.\n";
+        } else {
+                echo "copied doc file: $doc_file.\n";
+        // file move might change the name of the file
+                $fname2 = basename($doc_file);
+        }
+
+	$docfile = new stdClass();
+        $docfile->filename = $fname2;
+        $docfile->filepath = $target . $fname2;
+        $docfile->filemime = file_get_mimetype($fname2);
+        $docfile->filesize = filesize($fname2);
+        $docfile->filesource = $fname2;
+        $docfile->uid = 1;
+        $docfile->status = FILE_STATUS_TEMPORARY;
+        $docfile->timestamp = time();
+        $docfile->list = 1;
+        $docfile->description = $fname2;
+        $docfile->new = true;
+
+        drupal_write_record('files', $docfile);
+        file_set_status($docfile, 1);
+        $node->files[$docfile->fid] = $docfile;
+        }
+
+	if ($node = node_submit($node)) {
+            node_save($node);
+            drupal_set_message(t("Node ".$node->title." added correctly"));
+        } else {
+            drupal_set_message(t("Node ".$node->title." added incorrectly"), "error");
+        }
+
+    }
+    fclose($handle);
+*/
+}
+
+}

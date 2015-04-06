@@ -1,0 +1,13 @@
+; $Id: manager.info,v 1.2 2009/11/05 20:56:59 franz Exp $
+name = Manager
+description = UI for manager-friendly managing.
+core = 6.x
+package = Manager
+dependencies[] = views_bulk_operations
+
+; Information added by drupal.org packaging script on 2010-05-25
+version = "6.x-1.0-rc3"
+core = "6.x"
+project = "manager"
+datestamp = "1274809207"
+

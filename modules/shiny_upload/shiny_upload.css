@@ -1,0 +1,24 @@
+/**
+ * Theme Uploads
+ */
+.file-uploads .file-file {
+	margin: 10px 20px;
+}
+
+.file-file img {
+	vertical-align:middle;
+	margin-right: 10px;
+}
+
+.file-file .file-link {
+	font-weight: bold;;
+}
+
+.file-file .file-metadata {
+	margin-left: 46px;
+	font-size: .8em;
+}
+
+.file-file .file-metadata .file-size {
+	font-weight: bold;
+}

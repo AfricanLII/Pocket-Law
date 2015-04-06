@@ -1,0 +1,10 @@
+; $Id: indexpage.info,v 1.1.4.1 2008/06/07 18:41:31 nancyw Exp $
+name = "IndexPage"
+description = "This module displays customizables index pages for each node type, with alphabetical and taxonomy filters."
+core = 6.x
+; Information added by drupal.org packaging script on 2009-07-17
+version = "6.x-1.1"
+core = "6.x"
+project = "indexpage"
+datestamp = "1247857301"
+

@@ -1,0 +1,242 @@
+# $Id: general.pot,v 1.1.2.1 2010/01/25 19:15:42 lourenzo Exp $
+#
+# LANGUAGE translation of Drupal (general)
+# Copyright YEAR NAME <EMAIL@ADDRESS>
+# Generated from files:
+#  manager.module,v 1.2.2.12 2009/12/30 19:33:24 danillonunes
+#  manager.install,v 1.1.2.3 2009/12/17 08:18:12 lourenzo
+#  manager.info,v 1.2 2009/11/05 20:56:59 franz
+#  managers_bar.info,v 1.2 2009/11/05 20:56:59 franz
+#  managers_page.info,v 1.1.2.2 2009/11/12 18:42:43 franz
+#  manager.views_default.inc,v 1.1.2.4 2010/01/14 13:46:44 franz
+#  managers_bar.module,v 1.2.2.22 2010/01/11 21:44:46 danillonunes
+#  managers_page.admin.inc,v 1.1.2.8 2010/01/04 17:27:15 danillonunes
+#  managers_page.module,v 1.1.2.11 2010/01/14 13:46:44 franz
+#  page.tpl.php,v 1.1.2.2 2009/12/17 08:18:12 lourenzo
+#  slatem.info,v 1.1.2.2 2009/11/12 18:42:43 franz
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"POT-Creation-Date: 2010-01-25 17:14-0200\n"
+"PO-Revision-Date: YYYY-mm-DD HH:MM+ZZZZ\n"
+"Last-Translator: NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <EMAIL@ADDRESS>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: manager.module:50
+msgid "Manager Settings"
+msgstr ""
+
+#: manager.module:51
+msgid "Adjust Manager settings"
+msgstr ""
+
+#: manager.module:204
+msgid "Appear in Manager module UI"
+msgstr ""
+
+#: manager.module:205
+msgid "Check this option if you want this Content Type to show on Manager's Interface"
+msgstr ""
+
+#: manager.module:282
+msgid "Could not create file %filename!"
+msgstr ""
+
+#: manager.module:314
+msgid "File %filename could not be deleted!"
+msgstr ""
+
+#: manager.module:27
+msgid "administer manager interface"
+msgstr ""
+
+#: manager.install:29
+msgid "Manager's CSS Cache"
+msgstr ""
+
+#: manager.install:31
+msgid "Exists"
+msgstr ""
+
+#: manager.install:35
+msgid "The Manager's CSS cache directory, %path could not be created due to a misconfigured files directory. Please ensure that the files directory is correctly configured and that the webserver has permission to create directories."
+msgstr ""
+
+#: manager.install:37
+msgid "Unable to create"
+msgstr ""
+
+#: manager.info:0;0 managers_bar/managers_bar.info:0 managers_page/managers_page.info:0
+msgid "Manager"
+msgstr ""
+
+#: manager.info:0
+msgid "UI for manager-friendly managing."
+msgstr ""
+
+#: includes/manager.views_default.inc:15
+msgid "Manager interface for managing content"
+msgstr ""
+
+#: includes/manager.views_default.inc:25
+msgid "Title"
+msgstr ""
+
+#: includes/manager.views_default.inc:37
+msgid "New?"
+msgstr ""
+
+#: includes/manager.views_default.inc:50
+msgid "Author"
+msgstr ""
+
+#: includes/manager.views_default.inc:62;200
+msgid "Published"
+msgstr ""
+
+#: includes/manager.views_default.inc:75
+msgid "Edit"
+msgstr ""
+
+#: includes/manager.views_default.inc:107
+msgid "Managing %1 nodes."
+msgstr ""
+
+#: includes/manager.views_default.inc:180
+msgid "Promoted"
+msgstr ""
+
+#: includes/manager.views_default.inc:220
+msgid "Sticky"
+msgstr ""
+
+#: includes/manager.views_default.inc:240
+msgid "Manage Content"
+msgstr ""
+
+#: includes/manager.views_default.inc:241
+msgid "There are no objects satisfying the filter settings. Try changing them to get some results."
+msgstr ""
+
+#: includes/manager.views_default.inc:304
+msgid "Page"
+msgstr ""
+
+#: managers_bar/managers_bar.module:127
+msgid "<< No Menu >>"
+msgstr ""
+
+#: managers_bar/managers_bar.module:129
+msgid "Manager's Bar Menu"
+msgstr ""
+
+#: managers_bar/managers_bar.module:130
+msgid "Menu to show when the mouse goes over the Manage button"
+msgstr ""
+
+#: managers_bar/managers_bar.module:172
+msgid "Create content"
+msgstr ""
+
+#: managers_bar/managers_bar.module:184
+msgid "Edit content"
+msgstr ""
+
+#: managers_bar/managers_bar.module:195 managers_page/managers_page.admin.inc:138
+msgid "Manage"
+msgstr ""
+
+#: managers_bar/managers_bar.module:220
+msgid "Manage comments"
+msgstr ""
+
+#: managers_bar/managers_bar.module:226;230
+msgid "@type"
+msgstr ""
+
+#: managers_bar/managers_bar.module:60
+msgid "access managers bar"
+msgstr ""
+
+#: managers_bar/managers_bar.info:0
+msgid "Manager's Bar"
+msgstr ""
+
+#: managers_bar/managers_bar.info:0
+msgid "Adds a nice manager-friendly bar on the top of the site."
+msgstr ""
+
+#: managers_page/managers_page.admin.inc:24
+msgid "One or more problems were detected with your Drupal installation. Check the <a href=\"@status\">status report</a> for more information."
+msgstr ""
+
+#: managers_page/managers_page.admin.inc:66
+msgid "You do not have any administrative items."
+msgstr ""
+
+#: managers_page/managers_page.admin.inc:139
+msgid "Add"
+msgstr ""
+
+#: managers_page/managers_page.module:139
+msgid "Comments"
+msgstr ""
+
+#: managers_page/managers_page.module:140
+msgid "All comments posted on site."
+msgstr ""
+
+#: managers_page/managers_page.module:187
+msgid "Site's Content"
+msgstr ""
+
+#: managers_page/managers_page.module:189
+msgid "Manage the site's dynamic content"
+msgstr ""
+
+#: managers_page/managers_page.module:203
+msgid "Site's Reports"
+msgstr ""
+
+#: managers_page/managers_page.module:205
+msgid "View the site's reports"
+msgstr ""
+
+#: managers_page/managers_page.module:85
+msgid "access managers page"
+msgstr ""
+
+#: managers_page/managers_page.info:0
+msgid "Manager's Page"
+msgstr ""
+
+#: managers_page/managers_page.info:0
+msgid "Adds a nice manager-friendly page on /manage."
+msgstr ""
+
+#: managers_page/theme/page.tpl.php:25
+msgid "Help"
+msgstr ""
+
+#: managers_page/theme/page.tpl.php:34
+msgid "Need help?"
+msgstr ""
+
+#: managers_page/theme/page.tpl.php:48
+msgid "Expand"
+msgstr ""
+
+#: managers_page/theme/slatem.info:0
+msgid "Slate M"
+msgstr ""
+
+#: managers_page/theme/slatem.info:0
+msgid "Slate M theme. Provided/managed by the manager module. Modified version of Admin module's Slate"
+msgstr ""
+

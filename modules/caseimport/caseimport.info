@@ -1,0 +1,6 @@
+name = caseimport
+description = module to bulk import case law documents
+core = 6.x
+dependencies[] = content
+dependencies[] = upload
+dependencies[] = pathauto

@@ -1,0 +1,13 @@
+; $Id: yboss.info,v 1.1.2.1 2008/07/14 06:59:28 mfb Exp $
+name = "Yahoo Search BOSS"
+description = "Integrates the Yahoo BOSS (Build your Own Search Service) platform."
+dependencies[] = search
+core = 6.x
+php = 5.0
+
+; Information added by drupal.org packaging script on 2008-07-14
+version = "6.x-1.0-alpha1"
+core = "6.x"
+project = "yboss"
+datestamp = "1216019718"
+

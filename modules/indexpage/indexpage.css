@@ -1,0 +1,60 @@
+/* $Id: indexpage.css,v 1.1.2.3 2009/05/21 18:00:03 nancyw Exp $ */
+/** 
+ * @file
+ * Style sheet for IndexPage module.
+ */
+
+/*.indexpage_results .item-list ul li {
+  list-style-type: disc;
+  background: transparent;
+  margin-left: 0;
+}*/
+
+.indexpage_results .center {
+  text-align: center;
+}
+
+.indexpage_results table {
+ width: 100%
+ background-color: white; 
+ vertical-align: top;
+}
+
+.indexpage_results td {
+  vertical-align: top;
+}
+
+.indexpage_term_list li {
+  list-style-type: none !important;
+  list-style-image: none !important;
+  background: url() !important;
+  margin: 0 0 0 1em;
+}
+
+.indexpage_category .description {
+  font-style: italic;
+}
+
+.indexpage-radios .form-item label, .indexpage-checkboxes .form-item label  {
+  font-weight: bold;
+}
+
+.indexpage-checkboxes label.option {
+  width: 20%;
+  float: left;
+  font-weight: normal;
+}
+
+.indexpage-checkboxes .description {
+  clear: both;
+}
+
+.indexpage-radios label.option {
+  float: left;
+  margin-right: 2em;
+  font-weight: normal;
+}
+
+.indexpage-radios .description {
+  clear: both;
+}

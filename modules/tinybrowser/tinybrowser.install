@@ -1,0 +1,61 @@
+<?php
+// $Id:
+
+/**
+ * Implementation of hook_install().
+ */
+function tinybrowser_install() {
+  $tinymce_root = _tinybrowser_get_tinymce_root();
+  variable_set('tinybrowser_tinymce_root', $tinymce_root);
+
+  // install default role profiles
+  include_once './'. drupal_get_path('module', 'tinybrowser') .'/tinybrowser.profile.inc';
+  tinybrowser_install_profiles();
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function tinybrowser_uninstall() {
+  db_query("DELETE FROM {variable} WHERE name LIKE 'tinybrowser%'");
+  cache_clear_all('variables', 'cache');
+}
+
+/**
+ * Implementation of hook_requirements()
+ */
+function tinybrowser_requirements($phase) {
+  $requirements = array();
+  if ($phase == 'runtime') {
+    $requirements['tinybrowser'] = array(
+      'title' => t('TinyBrowser'),
+      'value' => t('1.41 + Security fix'),
+    );
+    $requirements['tinybrowser']['severity'] = REQUIREMENT_OK;
+
+    if (!tinybrowser_requirements_check_cookie_domain()) {
+      $requirements['tinybrowser']['severity'] = REQUIREMENT_ERROR;
+      $requirements['tinybrowser']['description'] = t('TinyBrowser requires $cookie_domain to be set, but it is not set in your settings.php.');
+    }
+  }
+  return $requirements;
+}
+
+/**
+ * Function to get the tinyMCE directory (where tiny_mce.js exists)
+ */
+function _tinybrowser_get_tinymce_root() {
+  if (module_exists("tinytinymce")) {
+    $install_dir = drupal_get_path('module', 'tinytinymce');
+    if (file_exists($install_dir . '/tinymce/jscripts/tiny_mce/tiny_mce.js')) {
+      return '../../tinytinymce/tinymce/jscripts/tiny_mce';
+    }
+  }
+  else if (module_exists("wysiwyg")) {
+    $install_dir = wysiwyg_get_path('');
+    if (file_exists($install_dir . '/tinymce/jscripts/tiny_mce/tiny_mce.js')) {
+      return '../../../libraries/tinymce/jscripts/tiny_mce';
+    }
+  }
+  return '';
+}

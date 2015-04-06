@@ -1,0 +1,5 @@
+; $Id: AUTHOR.txt,v 1.1.2.2.2.1 2008/06/07 18:41:31 nancyw Exp $
+Carlos A. Paramio (carlos.paramio@interactors.coop)
+Khalid Baheyeldin (http://2bits.com) Port to Drupal 4.7, SQL injection fixes.
+Nancy Wichmann (http://nanwich.info) Port to 5.x, a few other fixes.
+Nancy Wichmann (http://nanwich.info) Port to 6.x.

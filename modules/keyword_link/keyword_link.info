@@ -1,0 +1,9 @@
+name = Keyword link
+description = A module that allows you to define keyword/link pairs. The keywords are automatically linked in each of your posts. This is usefull for improving the internal cross referencing pages inside your site or to automatically link to external partners (SEO).
+core = 6.x
+; Information added by drupal.org packaging script on 2011-02-25
+version = "6.x-1.x-dev"
+core = "6.x"
+project = "keyword_link"
+datestamp = "1298619519"
+

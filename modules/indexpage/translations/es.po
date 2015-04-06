@@ -1,0 +1,290 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: indexpage v1\n"
+"POT-Creation-Date: 2008-09-09 12:30-0400\n"
+"PO-Revision-Date: \n"
+"Last-Translator: Ricardo Santiago <rsantiago@gmail.com>\n"
+"Language-Team: Ricardo Santiago Cachero <rsantiago@gmail.com>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Poedit-Language: Spanish\n"
+"X-Poedit-Country: SPAIN\n"
+
+#: indexpage.module:27
+msgid "Displays index pages for each node type, with alphabetical and taxonomy filters."
+msgstr "Muestra una página índice por cada tipo de nodo, con filtros alfabéticos y por taxonomía."
+
+#: indexpage.module:35
+msgid "General settings"
+msgstr "Configuración general"
+
+#: indexpage.module:42
+msgid "Description text for main index page"
+msgstr "Texto descriptivo para la página índice principal"
+
+#: indexpage.module:50
+msgid "Max number of results per page"
+msgstr "Número máximo de resultados por página"
+
+#: indexpage.module:58
+msgid "Suppress unused taxonomy terms"
+msgstr "Suprimir términos de taxonomía sin usar"
+
+#: indexpage.module:60
+msgid "If this option is selected, terms with no associated nodes will not be shown."
+msgstr "Si esta opción está seleccionada, los términos que no tengan nodos asociados no serán mostrados."
+
+#: indexpage.module:65
+msgid "Use the node's teaser as the link title"
+msgstr "Usar el resumen del nodo como enlace del título"
+
+#: indexpage.module:67
+msgid "If this option is selected, the teaser for the node will be used for the link title (tooltip)."
+msgstr "Si esta opción está seleccionada, el resumen del nodo será usado para el enlace del título (tooltip)."
+
+#: indexpage.module:72
+msgid "Show counts"
+msgstr "Mostrar cuentas"
+
+#: indexpage.module:74
+msgid "Shows a count of how many nodes there are and how many are used by each term."
+msgstr "Mostrar cuentos nodos hay y cuantos están usados por cada término."
+
+#: indexpage.module:79
+msgid "Show untagged"
+msgstr "Mostrar sin etiquetas"
+
+#: indexpage.module:81
+msgid "Shows a count of how many nodes that have no taxonomy term associated."
+msgstr "Mostrar la cuenta de los nodos que no tienen términos asociados."
+
+#: indexpage.module:85;461
+msgid "Author"
+msgstr "Autor"
+
+#: indexpage.module:86
+msgid "All Authors"
+msgstr "Todos los Autores"
+
+#: indexpage.module:87
+msgid "Node type"
+msgstr "Tipo de nodo"
+
+#: indexpage.module:88
+msgid "Created date/time"
+msgstr "Fecha/Hora de creación"
+
+#: indexpage.module:89
+msgid "Updated date/time"
+msgstr "Fecha/Hora de actualización"
+
+#: indexpage.module:90;465
+msgid "Published"
+msgstr "Publicado"
+
+#: indexpage.module:91;466
+msgid "Promoted"
+msgstr "Promovido"
+
+#: indexpage.module:92;467
+msgid "Sticky"
+msgstr "Pegajoso"
+
+#: indexpage.module:98
+msgid "Include extra fields on the result page"
+msgstr "Incluir campos extra en la página de resultado"
+
+#: indexpage.module:100
+msgid "Any selected fields will be included in the results list. The title will always be shown."
+msgstr "Cualquier campo seleccionado será incluido en la lista de resultados. El título siempre se mostrará."
+
+#: indexpage.module:113
+msgid "Index page settings for !s"
+msgstr "Configuración de la página índice para !s"
+
+#: indexpage.module:122
+msgid "Name to show for this node type"
+msgstr "Nombre a mostrar para este tipo de nodo"
+
+#: indexpage.module:130
+msgid "Enable index page for this node type"
+msgstr "Habilitar página índice para este tipo de nodo"
+
+#: indexpage.module:137
+msgid "Show alphabetical index for this node type"
+msgstr "Mostrar índice alfabético para este tipo de nodo"
+
+#: indexpage.module:145
+msgid "Show vocabulary filters for this node type"
+msgstr "Mostrar filtros de vocabulario para este tipo de nodo"
+
+#: indexpage.module:159
+msgid "Descriptive text to show at the top of the page."
+msgstr "Texto descriptivo a mostrar al principio de la página."
+
+#: indexpage.module:225;414
+msgid "Index page for !s"
+msgstr "Página índice para !s"
+
+#: indexpage.module:247
+msgid "ERROR: That node type does not exist, there are no entries, or the index page for this node type is disabled."
+msgstr "ERROR: Ese tipo de nodo no existe, no tiene entradas, o la página índice para este tipo de nodo está deshabilitada."
+
+#: indexpage.module:262
+msgid "status"
+msgstr "estado"
+
+#: indexpage.module:263
+msgid "published"
+msgstr "publicado"
+
+#: indexpage.module:273
+msgid "This content type uses these options: !opts"
+msgstr "Este tipo de contenido usa estas opciones: !opts"
+
+#: indexpage.module:279
+msgid "Alphabetical index"
+msgstr "Índice alfabético"
+
+#: indexpage.module:280
+msgid "Click a letter to see the titles of content beginning with that letter."
+msgstr "Pulsa en una letra para ver los títulos del contenido que comienzan por esa letra."
+
+#: indexpage.module:309
+msgid "Category Index"
+msgstr "Índice de Categorías"
+
+#: indexpage.module:310
+msgid "Terms that have content will link to a list of titles tagged with that term."
+msgstr "Los términos con contenido mostrarán un enlace a la lista de títulos etiquetados con ese término."
+
+#: indexpage.module:335
+msgid "None found"
+msgstr "No se encontró nada"
+
+#: indexpage.module:338
+msgid "List by !s terms"
+msgstr "Lista por términos !s"
+
+#: indexpage.module:356
+msgid "Operations"
+msgstr "Operaciones"
+
+#: indexpage.module:361
+msgid "Create a new entry"
+msgstr "Crear nueva entrada"
+
+#: indexpage.module:363
+msgid "Create a new !type node."
+msgstr "Crear un nuevo nodo !type."
+
+#: indexpage.module:370
+msgid "Edit !type"
+msgstr "Editar !type"
+
+#: indexpage.module:372
+msgid "Edit the !type content type"
+msgstr "Editar el tipo de contenido !type"
+
+#: indexpage.module:380
+msgid "Edit !type vocabulary"
+msgstr "Editar el vocabulario !type"
+
+#: indexpage.module:382
+msgid "Edit the !type vocabulary."
+msgstr "Editar el vocabulario !type."
+
+#: indexpage.module:390
+msgid "Indexpage settings"
+msgstr "Configuración de Indexpage"
+
+#: indexpage.module:392
+msgid "Change the Indexpage settings"
+msgstr "Cambiar la configuración de Indexpage"
+
+#: indexpage.module:427
+msgid "no terms"
+msgstr "sin términos"
+
+#: indexpage.module:429
+msgid "!type nodes classified with !term"
+msgstr "Nodos !type clasificados con !term"
+
+#: indexpage.module:436
+msgid "All !type nodes"
+msgstr "Todos los nodos !type"
+
+#: indexpage.module:443
+msgid "!type nodes beginning with non-alphabetical"
+msgstr "Nodos !type que empiezan con un caracter no alfabético"
+
+#: indexpage.module:448
+msgid "!type nodes beginning with \"!term\""
+msgstr "Nodos !type que empiezan con \"!term\""
+
+#: indexpage.module:459
+msgid "Title"
+msgstr "Título"
+
+#: indexpage.module:460
+msgid "Type"
+msgstr "Tipo"
+
+#: indexpage.module:462
+msgid "Authors"
+msgstr "Autores"
+
+#: indexpage.module:463
+msgid "Created"
+msgstr "Creado"
+
+#: indexpage.module:464
+msgid "Updated"
+msgstr "Actualizado"
+
+#: indexpage.module:508
+msgid "Yes"
+msgstr "Si"
+
+#: indexpage.module:508
+msgid "No"
+msgstr "No"
+
+#: indexpage.module:539
+msgid "There are no results."
+msgstr "No hay resultados."
+
+#: indexpage.module:271
+msgid "There is one !type node."
+msgstr "Hay un nodo !type."
+
+#: indexpage.module:349
+msgid "There is one unclassified !type node."
+msgstr "Hay un nodo !type sin clasificar."
+
+#: indexpage.module:175
+msgid "access indexpage"
+msgstr "acceder a indexpage"
+
+#: indexpage.module:182
+msgid "Index page"
+msgstr "Página índice"
+
+#: indexpage.module:190
+#: indexpage.info:0
+msgid "IndexPage"
+msgstr "IndexPage"
+
+#: indexpage.module:191
+msgid "IndexPage settings."
+msgstr "Configuración de IndexPage."
+
+#: indexpage.module:0
+msgid "indexpage"
+msgstr "indexpage"
+
+#: indexpage.info:0
+msgid "This module displays customizables index pages for each node type, with alphabetical and taxonomy filters."
+msgstr "Este módulo muestra las páginas índice personalozables para cada tipo de nodo, con filtros alfabéticos y por taxonomía."
+

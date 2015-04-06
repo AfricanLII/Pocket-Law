@@ -1,0 +1,552 @@
+<?php
+// $Id: indexpage.module,v 1.8.2.6.2.21 2009/07/17 18:45:49 nancyw Exp $
+
+/** 
+ * @file
+ * This module displays customizable index pages for each node type, with
+ * alphabetical, taxonomy, and user filters.
+ *
+ * Licensed under the terms of the GNU General Public License:
+ * 		http://www.opensource.org/licenses/gpl-license.php
+ *
+ * @version 1.0
+ * @author  Carlos A. Paramio (carlos.paramio@interactors.coop)
+ *
+ * @version 1.2
+ * Updated for 4.7 forms, node list, and plugged SQL injection holes
+ * @author  Khalid Baheyeldin http://2bits.com
+ *
+ * @version 1.3
+ * Updated for 5.x, 6.x.
+ * @author  Nancy Wichmann http://nanwich.info
+ *
+ * @version 1.4
+ * Updated for 5.x, 6.x - added user filters, faster page build.
+ * @author  Nancy Wichmann http://nanwich.info
+ */
+
+/**
+ * Implementation of hook_help().
+ */
+function indexpage_help($path, $args) {
+  switch ($path) {
+    case 'admin/help#indexpage':
+      return t('Displays index pages for each node type, with alphabetical, taxonomy, and user filters.');
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function indexpage_theme($path, $args) {
+  return array(
+    'indexpage_term' => array(
+      'arguments' => array('term', 'type'),
+      ),
+    );
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function indexpage_perm() {
+  return array('access indexpage');
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function indexpage_menu() {
+  global $user;
+  $items = array();
+    $items['indexpage'] = array(
+      'title' => 'Index page',
+      'page callback' => 'indexpage_page',
+      'page arguments' => array(1, 2, 3),
+      'access arguments' => array('access indexpage'),
+      'type' => MENU_NORMAL_ITEM,
+      );
+      
+    $items['admin/settings/indexpage'] = array(
+      'title' => 'IndexPage',
+      'description' => 'IndexPage settings.',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('indexpage_admin_settings'),
+      'access arguments' => array('administer site configuration'),
+      'type' => MENU_NORMAL_ITEM,
+      'file' => 'indexpage.admin.inc',
+      );
+      
+
+  return $items;
+}
+
+function indexpage_page($type, $op = NULL, $uid = NULL) {
+  drupal_add_css(drupal_get_path('module', 'indexpage') .'/indexpage.css');
+
+  global $user;
+  // Is this the overview index?
+  if (!$type) {
+    $output .= '<div class="content">';
+    $output .= nl2br(variable_get('indexpage_description', ''));
+    $output .= '<ul>';
+    $types = node_get_types('names');
+    foreach ($types as $type => $name) {
+      if (variable_get('indexpage_'. $type .'_enable', 1)) {
+        $output .= '<li>'. l(t('Index page for !s', array('!s' => check_plain(variable_get('indexpage_'. $type .'_name', $type)))), drupal_get_path_alias('indexpage/'. $type)) .'</li>';
+      }
+    }
+
+    $output .= '</ul></div>';
+
+    return $output;
+  }
+  else {
+    // Do the index for a specific type.
+    // In 6.x, the node module does node_access automatically.
+//    $access = _node_access_where_sql();
+//    $exist_type = @db_result(db_query(_indexpage_check_status("SELECT COUNT(DISTINCT(n.nid)) FROM {node} n, {node_access} na WHERE n.type = '%s'") . ($access ? ' AND '. $access : ''), $type));
+    $exist_type = @db_result(db_query(_indexpage_check_status("SELECT COUNT(DISTINCT(n.nid)) FROM {node} n WHERE n.type = '%s'"), $type));
+    if ($exist_type && variable_get('indexpage_'. $type .'_enable', 1)) {
+      if (empty($op) && $op !== '0') {
+//        $unpublished = @db_result(db_query("SELECT COUNT(DISTINCT(n.nid)) FROM {node} n, {node_access} na WHERE n.type = '%s' AND n.status = 0". ($access ? ' AND '. $access : ''), $type));
+        $unpublished = @db_result(db_query("SELECT COUNT(DISTINCT(n.nid)) FROM {node} n WHERE n.type = '%s' AND n.status = 0", $type));
+        return indexpage_page_index($type, $exist_type, $unpublished);
+      }
+      else {
+        return indexpage_page_list($type, $op, $uid);
+      }
+    }
+    else {
+      return t('ERROR: That content type does not exist, there are no entries, or the index page for that type is disabled.');
+    }
+  }
+}
+
+function indexpage_page_index($type, $count = 0, $unpub_count = 0) {
+  list($type, $uid) = explode('-', $type);
+  $name = check_plain(variable_get('indexpage_'. $type .'_name', $type));
+  $show_count = variable_get('indexpage_show_count', TRUE);
+  $show_users = variable_get('indexpage_show_users', FALSE);
+  $show_untagged = variable_get('indexpage_show_untagged', TRUE);
+  $suppress_unused = variable_get('indexpage_suppress_unused', FALSE);
+  $show_description = variable_get('indexpage_show_description', FALSE);
+  $list_format = variable_get('indexpage_list_format', 'list');
+  $links = array();
+
+  drupal_set_title(t('Index Page for !type', array('!type' => $name)));
+
+  $output = '<div class="indexpage_index indexpage_'. $type .'">';
+
+  // Get node info.
+  $node_opts = variable_get('node_options_'. $type, array());
+  if (($where = array_search(t('status'), $node_opts)) !== FALSE) {
+    $node_opts[$where] = t('published');
+  }
+
+  if ($description = variable_get('indexpage_'. $type .'_page_text', NULL)) {
+    $output .= '<div class="indexpage_description">'. $description .'</div>';
+  }
+
+  if ($show_count) {
+    $count_msg = format_plural($count, 'There is one !type node', 'There are @count !type nodes',
+      array('!type' => $type_name));
+    if ($unpub_count) {
+      $count_msg .= format_plural($unpub_count, ', of which one is unpublished.', ', of which @count are unpublished.');
+    }
+    else {
+      $count_msg .= '.';
+    }
+    $output .= '<p>'. $count_msg .' '. t('This content type uses these options: !opts.', array('!opts' => implode(', ', $node_opts))) .'</p>';
+  }
+
+  // Index by letter block.
+  if (variable_get('indexpage_'. $type .'_alphaindex', 1)) {
+    $output .= '<div class="indexpage-node-index">';
+    $output .= '<h3>'. t('Alphabetical index') .'</h3>';
+    $output .= '<p><em>'. t('Click a letter to see the titles of content beginning with that letter.') .'</em></p>';
+    $output .= '<p>';
+    // Note: this doesn't work well with non-English.
+    $range = drupal_map_assoc(range('A', 'Z'));
+    foreach ($range as $letter) {
+      $sql = _indexpage_check_status("SELECT COUNT(n.nid) FROM {node} n INNER JOIN {node_revisions} r ON r.nid=n.nid AND r.vid=n.vid WHERE n.type='%s' AND (n.title LIKE '%s%%' OR n.title LIKE '%s%%')");
+      if (db_result(db_query($sql, $type,  $letter, drupal_strtolower($letter))) > 0) {
+        $range[$letter] = l($letter, drupal_get_path_alias("indexpage/$type/$letter"), array('attributes' => array('title' => "$name content beginning with '$letter'")));
+      }
+    }
+
+    $sql = _indexpage_check_status("SELECT COUNT(n.nid) FROM {node} n INNER JOIN {node_revisions} r ON r.nid=n.nid AND r.vid=n.vid WHERE n.type='%s' AND (n.title REGEXP '^[^[:alpha:]].*$')");
+    if (db_result(db_query($sql, $type)) > 0) {
+      $range['#'] = l('#', drupal_get_path_alias("indexpage/$type/_"), array('attributes' => array('title' => "$name content beginning with a non-alphabetic character")));
+    }
+
+    $range['all'] = l(t('all'), drupal_get_path_alias("indexpage/$type/all"), array('attributes' => array('title' => "All $name content")));
+
+    $output .= implode(' | ', $range) .'</p></div>';
+  }
+
+  // Index by users section.
+  $rows = array();
+  $sql = _indexpage_check_status("SELECT n.uid, COUNT(n.uid) as count FROM {node} n WHERE n.type='%s'") .' GROUP BY n.uid';
+  $users = db_query($sql, $type);
+  while ($u = db_fetch_object($users)) {
+    $account = user_load(array('uid' => $u->uid));
+    $rows[] = array(
+      theme('username', $account, array('picture' => TRUE, 'homepage' => FALSE)),
+      l($u->count, "indexpage/$type/user/$u->uid", array('attributes' => array('title' => t('Show the content this user contributed')))),
+      );
+  }
+  if ($rows) {
+    $header = array(t('User Name'), t('Count'));
+    $fieldset = array(
+      '#title' => t('Users who have created !name content', array('!name' => $name)),
+      '#description' => t('User names link to the user profile; the counts link to a list of titles by that user.'),
+      '#collapsible' => TRUE,
+      '#collapsed' => (count($rows) > variable_get('indexpage_maxresults', 10)),
+      '#value' => theme('table', $header, $rows),
+      );
+    $output .= '<div class="indexpage-users">'. theme('fieldset', $fieldset) .'</div>';
+  }
+
+  // Index by taxonomy terms section.
+  $voc_list = array();
+  if (variable_get('indexpage_'. $type .'_vocfilter', 1)) {
+    $vocs = db_query("SELECT v.name, v.vid FROM {vocabulary} v LEFT JOIN {vocabulary_node_types} t ON t.vid=v.vid WHERE t.type='%s'", $type);
+    while ($voc = db_fetch_array($vocs)) {
+      $term_list = array();
+      $voc_list[$voc['vid']] = check_plain($voc['name']);
+      $output .= '<div class="indexpage-filter-'. $voc['vid'] .'">';
+      $voc_count = 0;
+
+      $terms = taxonomy_get_tree($voc['vid']);
+      foreach ($terms as $term) {
+        $sql = _indexpage_check_status("SELECT COUNT(n.nid) FROM {node} n LEFT JOIN {term_node} t on t.nid=n.nid AND t.vid=n.vid WHERE type='%s' AND t.tid=%d");
+        $term->node_count = $how_many = db_result(db_query($sql, $type, $term->tid));
+        $voc_count += $how_many;
+        if ($how_many || !$suppress_unused) {
+          $term_list[] = theme('indexpage_term', $term, $type);
+        }
+      }
+
+      if ($term_list) {
+        if ($list_format == 'list') {
+          $stuff = theme('item_list', $term_list, NULL, 'ul', array('class' => 'indexpage_term_list'));
+        }
+        else {
+          $header = array();
+          if ($show_description) {
+            $header = array(
+              t('Category'),
+              t('Description'),
+              );
+          }
+          $stuff = theme('table', $header, $term_list, array('class' => 'indexpage_term_list'));
+        }
+      }
+      else {
+        $stuff = '<p>'. t('None found') .'</p>';
+      }
+      $fieldset = array(
+        '#title' => t('List by !s Categories', array('!s' => $voc['name'])) . ($show_count ? ' ('. $voc_count .')' : NULL),
+        '#description' => t('Terms (categories) that have content will link to a list of titles tagged with that term.'),
+        '#collapsible' => TRUE,
+        '#collapsed' => (count($term_list) > variable_get('indexpage_maxresults', 10)),
+        '#value' => $stuff,
+        '#attributes' => array('class' => 'indexpage_category indexpage_category_'. $voc['vid']),
+        );
+      $output .= theme('fieldset', $fieldset) .'</div>';
+    }
+
+    // Handle unclassified.
+    if ($show_untagged) {
+      $sql = _indexpage_check_status("SELECT COUNT(n.nid) FROM {node} n LEFT JOIN {term_node} t on n.nid=t.nid WHERE type='%s' AND t.tid IS NULL");
+      $how_many = db_result(db_query($sql, $type));
+      if ($how_many > 0) {
+        $title = format_plural($how_many, 'There is one unclassified !type node.', 'There are @count unclassified !type nodes.',
+          array('!type' => $type_name));
+        $output .= '<p>'. l($title, drupal_get_path_alias("indexpage/$type/0")) .'</p>';
+      }
+      $sql = _indexpage_check_status("SELECT n.nid, v.name FROM {node} n JOIN {term_node} tn ON tn.nid=n.nid JOIN {term_data} td ON td.tid=tn.tid JOIN {vocabulary} v ON v.vid=td.vid LEFT JOIN {vocabulary_node_types} nt ON nt.vid=v.vid AND nt.type=n.type WHERE n.type='%s' AND nt.type IS NULL");
+      $misclassed = db_query($sql, $type);
+      $voc_names = array();
+      $how_many = 0;
+      while ($row = db_fetch_array($misclassed)) {
+        $voc_names[] = decode_entities(check_plain($row['name']));
+        ++$how_many;
+      }
+      if ($voc_names) {
+        $voc_names = array_unique($voc_names);
+        $output .= '<p>'. t('There are !count !type nodes improperly classified in %vocs.', array('!count' => $how_many, '!type' => $type_name, '%vocs' => implode(', ', $voc_names))) .'</p>';
+      }
+    }
+  }
+
+  // Operations for this node type.
+  $output .= '<h3>'. t('Operations') .'</h3>';
+  $dest = drupal_get_destination();
+
+  if (user_access("create $type") || user_access("create $type content")) {
+    $links['indexpage-create'] = array(
+      'title' => t('Create a new entry'), 
+      'href' => 'node/add/'. $type,
+      'attributes' => array('title' => t('Create a new !type node.', array('!type' => $type)), 'rel' => 'nofollow'),
+      'query' => $dest,
+      );
+  }
+
+  if (user_access('administer content types')) {
+    $links['indexpage-content-type'] = array(
+      'title' => t('Edit !type', array('!type' => $type)), 
+      'href' => 'admin/content/types/'. $type,
+      'attributes' => array('title' => t('Edit the !type content type', array('!type' => $type)), 'rel' => 'nofollow'),
+      'query' => $dest,
+      );
+  }
+
+  if (user_access('administer taxonomy')) {
+    foreach ($voc_list as $vid => $name) {
+      $links['indexpage-vocabulary-'. $vid] = array(
+        'title' => t('Edit !type vocabulary', array('!type' => $name)), 
+        'href' => 'admin/content/taxonomy/edit/vocabulary/'. $vid,
+        'attributes' => array('title' => t('Edit the !type vocabulary.', array('!type' => $name)), 'rel' => 'nofollow'),
+        'query' => $dest,
+        );
+    }
+  }
+
+  if (user_access('administer site configuration')) {
+    $links['indexpage-settings'] = array(
+      'title' => t('Indexpage settings'), 
+      'href' => 'admin/settings/indexpage',
+      'attributes' => array('title' => t('Change the Indexpage settings'), 'rel' => 'nofollow'),
+      'query' => $dest,
+      );
+  }
+
+  $output .= theme('links', $links, array('class' => 'links inline'));
+  
+  return $output .'</div>';
+}
+
+function theme_indexpage_term($term, $type) {
+  static $show_count, $show_description, $list_format;
+  if (!isset($show_count)) {
+    $show_count = variable_get('indexpage_show_count', TRUE);
+    $show_description = variable_get('indexpage_show_description', FALSE);
+    $list_format = variable_get('indexpage_list_format', 'list');
+  }
+  $item = str_repeat('&ndash; ', $term->depth);
+  if ($term->node_count) {
+    $item .= l($term->name, drupal_get_path_alias("indexpage/$type/$term->tid")) . ($show_count ? ' ('. $term->node_count .')' : NULL);
+  }
+  else {
+    $item .= check_plain($term->name);
+  }
+  switch ($list_format) {
+    case 'list':
+      $item .= $show_description ? (' &mdash; '. $term->description) : NULL;
+      break;
+      
+    case 'table':
+      $item = array($item);
+      if ($show_description) {
+        $item[] = $term->description;
+      }
+      break;
+  }
+  return $item;
+}
+
+function _indexpage_check_status($query) {
+  // Must have 'admin nodes' permission to see unpublished.
+  if (!user_access('administer nodes')) {
+    $query .= ' AND n.status = 1';
+  }
+  return db_rewrite_sql($query);
+}
+
+function indexpage_page_list($type, $filter, $uid = NULL) {
+  static $acct = array();
+  $name = check_plain(variable_get('indexpage_'. $type .'_name', $type));
+
+  $breadcrumb = drupal_get_breadcrumb();
+  $breadcrumb[] = l(t('Index page for !s', array('!s' => $name)), drupal_get_path_alias('indexpage/'. $type));
+  drupal_set_breadcrumb($breadcrumb);
+
+  $output = '<div class="indexpage_results">';
+  if (is_numeric($filter)) {
+    // Filter by vocabulary term.
+    $sql = "SELECT n.*, r.teaser FROM {node} n LEFT JOIN {term_node} t ON t.nid=n.nid AND t.vid=n.vid INNER JOIN {node_revisions} r ON r.nid=n.nid AND r.vid=n.vid WHERE type='%s' AND t.tid ". ($filter == 0 ? 'IS NULL' : '= %d');
+    $args = array($type, $filter);
+    if ($filter) {
+      $term = taxonomy_get_term($filter);
+      $term_name = check_plain($term->name);
+    }
+    else {
+      $term_name = t('no terms');
+    }
+    drupal_set_title(t('!type nodes classified with !term', array('!type' => $name, '!term' => $term_name)));
+  }
+  else {
+    switch ($filter) {
+      case 'all':
+        // All nodes of this type wanted.
+        $sql = "SELECT n.*, r.teaser FROM {node} n INNER JOIN {node_revisions} r ON r.nid=n.nid AND r.vid=n.vid WHERE n.type='%s'";
+        $args = array($type);
+        drupal_set_title(t('All !type nodes', array('!type' => $name)));
+        break;
+
+      case '_':
+        // Filter by non_alpha.
+        $sql = "SELECT n.*, r.teaser FROM {node} n INNER JOIN {node_revisions} r ON r.nid=n.nid AND r.vid=n.vid WHERE n.type='%s' AND (n.title REGEXP '^[^[:alpha:]].*$')";
+        $args = array($type);
+        drupal_set_title(t('!type nodes beginning with non-alphabetical', array('!type' => $name)));
+        break;
+
+      case 'user':
+        // Filter by user.
+        $sql = "SELECT n.*, r.teaser FROM {node} n INNER JOIN {node_revisions} r ON r.nid=n.nid AND r.vid=n.vid WHERE n.type='%s' AND n.uid = %d";
+        $args = array($type, $uid);
+        $account = user_load(array('uid' => $uid));
+        drupal_set_title(t('!type nodes created by %user', array('!type' => $name, '%user' => theme('username', $account, array('plain' => TRUE)))));
+        break;
+
+      default:
+        // Filter by letter.
+        $sql = "SELECT n.*, r.teaser FROM {node} n INNER JOIN {node_revisions} r ON r.nid=n.nid AND r.vid=n.vid WHERE n.type='%s' AND (n.title LIKE '%s%%' OR n.title LIKE '%s%%')";
+        $args = array($type, $filter, drupal_strtolower($filter));
+        drupal_set_title(t('!type nodes beginning with "!term"', array('!type' => $name, '!term' => $filter)));
+        break;
+    }
+  }
+
+  $sql = _indexpage_check_status($sql);
+
+  $show_fields = array_merge(array('title' => 1), variable_get('indexpage_fields', array()));
+  $show_fields = array_filter($show_fields);
+  $weight_avail = module_exists('weight');
+
+  $fields = array(
+    'title' => array('data' => t('Title'), 'field' => 'title', 'sort' => 'asc', 'class' => 'left'),
+    'type' => array('data' => t('Type'), 'field' => 'type', 'class' => 'center'),
+    'language' => array('data' => t('Language'), 'field' => 'language', 'class' => 'center'),
+    'uid' => array('data' => t('Author'), 'field' => 'uid', 'class' => 'left'),
+    'authors' => array('data' => t('Authors / Editors'), 'field' => 'uid', 'class' => 'left'),
+    'terms' => array('data' => t('Terms'), /*'field' => 'taxonomy',*/ 'class' => 'left'),
+    'created' => array('data' => t('Created'), 'field' => 'created', 'class' => 'center'),
+    'changed' => array('data' => t('Updated'), 'field' => 'changed', 'class' => 'center'),
+    'status' => array('data' => t('Published'), 'field' => 'status', 'class' => 'center'),
+    'promote' => array('data' => t('Promoted'), 'field' => 'promote', 'class' => 'center'),
+    'sticky' => array('data' => t('Sticky'), 'field' => 'sticky', 'class' => 'center'),
+    );
+  if ($weight_avail) {
+    $fields['weight'] = array('data' => t('Weight'), /*'field' => 'node_weight',*/ 'class' => 'center');
+  }
+
+  $max_results = variable_get('indexpage_maxresults', 10);
+  $tooltip = variable_get('indexpage_teaser_tooltip', TRUE);
+
+  $header = array();
+  foreach ($show_fields as $key => $value) {
+    $header[] = $fields[$key];
+  }
+  $rows = array();
+
+  $sql .= tablesort_sql($header);
+  $result = pager_query($sql, $max_results, 0, NULL, $args);
+
+  while ($node = db_fetch_object($result)) {
+    $line = array();
+    if ($weight_avail) {
+      _weight_decode($node);
+    }
+
+    foreach ($show_fields as $key => $value) {
+      switch ($key) {
+        case 'terms':
+          $field_value = $node->taxonomy;
+          break;
+        case 'weight':
+          $field_value = $node->node_weight;
+          break;
+        default:
+          $field_value = $node->{$fields[$key]['field']};
+      }
+      $field_align = $fields[$key]['class'];
+      switch ($key) {
+        case 'title':
+          if ($tooltip) {
+            $title = strip_tags($node->teaser);
+          }
+          else {
+            $title = check_plain($field_value);
+          }
+          $field_value = l($node->title, drupal_get_path_alias('node/'. $node->nid), array('attributes' => array('title' => $title)));
+          break;
+
+        case 'changed':
+        case 'created':
+          $field_value = format_date($field_value, 'custom', variable_get('date_format_short', 'm/d/Y - H:i'));
+          break;
+
+        case 'promote':
+        case 'status':
+        case 'sticky':
+          $field_value = $field_value > 0 ? t('Yes') : t('No');
+          break;
+
+        case 'uid':
+          $account = user_load(array('uid' => $node->uid));
+          $field_value = theme('username', $account);
+          break;
+
+        case 'terms':
+          $items = array();
+          $terms = db_query("SELECT td.name FROM {term_node} tn JOIN {term_data} td ON td.tid=tn.tid WHERE tn.nid=%d ORDER BY td.name", $node->nid);
+          while ($name = db_result($terms)) {
+            $items[] = check_plain($name);
+          }
+          if ($items) {
+            $items = array_unique($items);
+          }
+          else {
+            $items[] = t('- none -');
+          }
+          if (count($items) > 1) {
+            $field_value = decode_entities(theme('item_list', $items));
+          }
+          else {
+            $field_value = $items[0];
+          }
+          break;
+
+        case 'authors':
+          $items = array();
+          $uids = array($node->uid);
+          $revs = db_query("SELECT DISTINCT(r.uid) FROM {node_revisions} r WHERE r.nid=%d ORDER by r.vid DESC", $node->nid);
+          while ($rev_uid = db_result($revs)) {
+            $uids[] = $rev_uid;
+          }
+          $uids = array_unique($uids);
+          foreach ($uids as $uid) {
+            if (!isset($acct[$uid])) {
+              $acct[$uid] = user_load(array('uid' => $uid));
+            }
+            $items[] = theme('username', $acct[$uid]);
+          }
+          $field_value = theme('item_list', $items);
+          break;
+      }
+      $line[] = array('data' => $field_value, 'align' => $field_align);
+    }
+    $rows[] = $line;
+  }
+
+  if (!$rows) {
+    $rows[] = array(array('data' => t('There are no results.'), 'colspan' => 20));
+  }
+
+  $output .= theme('table', $header, $rows) . theme('pager', NULL, $max_results, 0);
+  return $output .'</div>';
+}

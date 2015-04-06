@@ -1,0 +1,6 @@
+CREATE TABLE `node_template` (
+  `nid` int(10) unsigned NOT NULL,
+  `is_template` tinyint(1) default '0',
+  `shared` tinyint(1) default '0',
+  PRIMARY KEY  (`nid`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;

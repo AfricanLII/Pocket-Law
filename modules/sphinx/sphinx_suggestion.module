@@ -1,0 +1,120 @@
+<?php
+// $Id: sphinx_suggestion.module,v 1.2.2.1 2009/02/25 17:40:28 johsw Exp $
+
+function sphinx_suggestion_menu() {
+  $items['admin/settings/sphinx/suggestions'] = array(
+    'title' => t('Suggestions'),
+    'description' => t('Configure the Sphinx suggestions'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('sphinx_suggestion_administration'),
+    'access arguments' => array('administer sphinx suggestions'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  return $items;
+}
+
+function sphinx_suggestion_perm() {
+  return array('administer sphinx suggestions');
+}
+
+function sphinx_suggestion_form_alter(&$form, $form_state, $form_id) {
+  
+  
+   if ($form_id == 'sphinx_search_form') {
+    
+    drupal_add_css(drupal_get_path('module', 'sphinx_suggestion') .'/sphinx_suggestion.css');
+    $terms =  $form['sphinx_search']['inline']['searchstring']['#default_value'];
+    $weight = $form['sphinx_search']['inline']['searchstring']['#weight'];
+   
+    if(!empty($terms)) {
+      $suggestion =  _sphinx_suggestion_do_suggestion($terms);
+      if($terms!=$suggestion && !empty($suggestion)) {
+        $form['sphinx_search']['searchstring_suggestion'] = array(
+          '#value' => '<div class="sphinx-suggestion">'. t('Did you mean !suggest', array('!suggest' => '<span class="sphinx-suggestion-term">'._sphinx_suggestion_make_suggestion_link($suggestion, 0).'</span>')) . '</div>',
+          '#weight' => $weight+1,
+        );
+      }
+    }
+    $iid = $form['sphinx_search']['iid']['#value'];
+    $sql = 'SELECT fid, field_name, display_name FROM {sphinx_fields} WHERE iid=%d AND active=1 ORDER BY weight';
+    $result = db_query($sql, $iid);
+    while ($fields = db_fetch_object($result)) {
+      $terms =  $form['sphinx_search']['advanced']['field'][$fields->field_name]['#default_value'];
+      $weight = $form['sphinx_search']['advanced']['field'][$fields->field_name]['#weight'];
+      if(!empty($terms)) {
+        $suggestion =  _sphinx_suggestion_do_suggestion($terms);
+        if($terms!=$suggestion) {
+          $form['sphinx_search']['advanced']['field'][$fields->field_name.'_suggestion'] = array(
+            '#value' => '<div class="sphinx-suggestion">'. t('Did you mean !suggest', array('!suggest' => '<span class="sphinx-suggestion-term">'._sphinx_suggestion_make_suggestion_link($suggestion, $fields->fid).'</span>')) . '</div>',
+            '#weight' => $weight+1,
+          );
+        }
+      }
+    }
+  }		
+}
+
+function _sphinx_suggestion_do_suggestion($terms) {
+ 
+  $search_array = explode(' ',$terms);
+  $lang = variable_get('sphinx_suggestion_default_language', 'en');
+  $spel = variable_get('sphinx_suggestion_default_spelling', '');
+  $pspell_link = pspell_new($lang, $spel, "", "", PSPELL_BAD_SPELLERS);
+  $edit = false;
+  for ($n=0;$n<count($search_array); $n++) {
+    if (!pspell_check($pspell_link, $search_array[$n])) {
+      $suggestions = pspell_suggest($pspell_link, $search_array[$n]);
+      if (!empty($suggestions[0])) {
+        $search_array[$n]=$suggestions[0];
+        $edit = true;
+      }
+	}
+  }
+  
+  return utf8_encode(implode(' ', $search_array));
+} 
+
+function _sphinx_suggestion_make_suggestion_link($suggestion, $fid) {
+  $url = parse_url($_SERVER['REQUEST_URI']);
+  if($fid==0) {
+    $path_elements = explode('/', $url['path']);
+    $path_elements[count($path_elements)-1] = $suggestion;
+    $path = substr(implode('/', $path_elements), 1);
+    return l($suggestion, $path, array('query' => $url['query']));
+  } else {
+    $query_elements = explode('&', $url['query']);
+    for($n=0;$n<count($query_elements);$n++) {
+      $parts = explode('=', $query_elements[$n]);
+      if($parts[0]=='as_f'.$fid) {
+        $query_elements[$n] = $parts[0].'='.$suggestion;
+      }
+    }
+    $query = implode('&', $query_elements);
+	return l($suggestion, substr($url['path'],1), array('query' => $query));
+  }
+}
+
+function sphinx_suggestion_administration($form_state) {
+ 
+  $form['sphinx_suggestion']['language'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Language'),
+    '#default_value' =>  variable_get('sphinx_suggestion_default_language', 'en'),
+    '#description' => t('The language parameter is the language code which consists of the two letter ISO 639 language code (ie "en" or "da")'),
+  );
+   $form['sphinx_suggestion']['spelling'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Spelling'),
+    '#default_value' =>  variable_get('sphinx_suggestion_default_spelling', ''),
+    '#description' => t("The spelling parameter is the requested spelling for languages with more than one spelling such as English. Known values are 'american', 'british', and 'canadian'."),
+  );
+  $form['#submit'][] = 'sphinx_suggestion_administration_submit';
+  return system_settings_form($form);
+}
+function sphinx_suggestion_administration_validate($form, &$form_state) {
+}
+function sphinx_suggestion_administration_submit($form, &$form_state) {
+  variable_set('sphinx_suggestion_default_language', $form_state['values']['language']);
+  variable_set('sphinx_suggestion_default_spelling', $form_state['values']['spelling']);
+  drupal_set_message(t('Language settings updated!'));
+}

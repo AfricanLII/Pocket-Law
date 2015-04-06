@@ -1,0 +1,13 @@
+
+Share 6.x-2.x, 2011-03-14
+-------------------------
+by greenSkin: Added CHANGELOG.txt.
+#664832 by dww: Fixed Share blocks to cache per page.
+#659606 by dww, greenSkin: Added js-hide class to Share block content div and
+  removed JavaScript code that was hiding the same div.
+#494602 by Gribnif, greenSkin: Simplified widget loading query. Node types now
+  obeyed when "where to display" is "link".
+#461980 by Gribnif: Now using the url() function in link codes. Changed from
+  saying "Click here to view", instead using a 'View "[title]"' syntax passing
+  the node title through check_plain(). Removed various redundancies with link
+  code generation.

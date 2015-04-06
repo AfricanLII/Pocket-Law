@@ -1,0 +1,400 @@
+# $Id: indexpage.pot,v 1.1.2.6 2009/05/21 20:04:26 nancyw Exp $
+#
+# LANGUAGE translation of Drupal (general)
+# Copyright YEAR NAME <EMAIL@ADDRESS>
+# Generated from files:
+#  indexpage.admin.inc,v 1.1.2.2 2009/05/21 18:00:03 nancyw
+#  indexpage.module,v 1.8.2.6.2.18 2009/05/21 18:00:03 nancyw
+#  indexpage.info,v 1.1.4.1 2008/06/07 18:41:31 nancyw
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"POT-Creation-Date: 2009-05-21 16:01-0400\n"
+"PO-Revision-Date: YYYY-mm-DD HH:MM+ZZZZ\n"
+"Last-Translator: NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <EMAIL@ADDRESS>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: indexpage.admin.inc:15 indexpage.module:487
+msgid "Yes"
+msgstr ""
+
+#: indexpage.admin.inc:15 indexpage.module:487
+msgid "No"
+msgstr ""
+
+#: indexpage.admin.inc:19
+msgid "General settings"
+msgstr ""
+
+#: indexpage.admin.inc:26
+msgid "Description text for main index page"
+msgstr ""
+
+#: indexpage.admin.inc:34
+msgid "Max number of results per page"
+msgstr ""
+
+#: indexpage.admin.inc:38
+msgid "This option determines how many items will show on the results page before a pager is added. It also makes term list fieldsets collapse when there are more that this many terms in the list."
+msgstr ""
+
+#: indexpage.admin.inc:46
+msgid "Show users who have submitted this content"
+msgstr ""
+
+#: indexpage.admin.inc:48
+msgid "If this option is selected, an additional section with user names will be shown."
+msgstr ""
+
+#: indexpage.admin.inc:56
+msgid "Suppress unused taxonomy terms"
+msgstr ""
+
+#: indexpage.admin.inc:58
+msgid "If this option is selected, terms with no associated nodes will not be shown."
+msgstr ""
+
+#: indexpage.admin.inc:66
+msgid "Use the node's teaser as the link title"
+msgstr ""
+
+#: indexpage.admin.inc:68
+msgid "If this option is selected, the teaser for the node will be used for the link title (tooltip)."
+msgstr ""
+
+#: indexpage.admin.inc:76
+msgid "Show counts"
+msgstr ""
+
+#: indexpage.admin.inc:78
+msgid "Shows a count of how many nodes there are and how many are used by each term."
+msgstr ""
+
+#: indexpage.admin.inc:86
+msgid "Show untagged"
+msgstr ""
+
+#: indexpage.admin.inc:88
+msgid "Shows a count of how many nodes that have no taxonomy term associated."
+msgstr ""
+
+#: indexpage.admin.inc:96
+msgid "Show term description"
+msgstr ""
+
+#: indexpage.admin.inc:98
+msgid "Shows the description for the term in the term list."
+msgstr ""
+
+#: indexpage.admin.inc:103
+msgid "List"
+msgstr ""
+
+#: indexpage.admin.inc:103
+msgid "Table"
+msgstr ""
+
+#: indexpage.admin.inc:104
+msgid "Show terms list as"
+msgstr ""
+
+#: indexpage.admin.inc:106
+msgid "This determines how the list of terms will appear."
+msgstr ""
+
+#: indexpage.admin.inc:112 indexpage.module:434
+msgid "Author"
+msgstr ""
+
+#: indexpage.admin.inc:113
+msgid "All Authors"
+msgstr ""
+
+#: indexpage.admin.inc:114 indexpage.module:436
+msgid "Terms"
+msgstr ""
+
+#: indexpage.admin.inc:115
+msgid "Node type"
+msgstr ""
+
+#: indexpage.admin.inc:116
+msgid "Created date/time"
+msgstr ""
+
+#: indexpage.admin.inc:117
+msgid "Updated date/time"
+msgstr ""
+
+#: indexpage.admin.inc:118 indexpage.module:439
+msgid "Published"
+msgstr ""
+
+#: indexpage.admin.inc:119 indexpage.module:440
+msgid "Promoted"
+msgstr ""
+
+#: indexpage.admin.inc:120 indexpage.module:441
+msgid "Sticky"
+msgstr ""
+
+#: indexpage.admin.inc:121 indexpage.module:433
+msgid "Language"
+msgstr ""
+
+#: indexpage.admin.inc:124 indexpage.module:444
+msgid "Weight"
+msgstr ""
+
+#: indexpage.admin.inc:130
+msgid "Include extra fields on the result page"
+msgstr ""
+
+#: indexpage.admin.inc:132
+msgid "Any selected fields will be included in the results list. The title will always be shown."
+msgstr ""
+
+#: indexpage.admin.inc:145
+msgid "Index page settings for !s"
+msgstr ""
+
+#: indexpage.admin.inc:154
+msgid "Name to show for this node type"
+msgstr ""
+
+#: indexpage.admin.inc:162
+msgid "Enable index page for this node type"
+msgstr ""
+
+#: indexpage.admin.inc:169
+msgid "Show alphabetical index for this node type"
+msgstr ""
+
+#: indexpage.admin.inc:177
+msgid "Show vocabulary filters for this node type"
+msgstr ""
+
+#: indexpage.admin.inc:191
+msgid "Descriptive text to show at the top of the page."
+msgstr ""
+
+#: indexpage.module:34
+msgid "Displays index pages for each node type, with alphabetical, taxonomy, and user filters."
+msgstr ""
+
+#: indexpage.module:97;374
+msgid "Index page for !s"
+msgstr ""
+
+#: indexpage.module:122
+msgid "ERROR: That content type does not exist, there are no entries, or the index page for that type is disabled."
+msgstr ""
+
+#: indexpage.module:138
+msgid "Index Page for !type"
+msgstr ""
+
+#: indexpage.module:144
+msgid "status"
+msgstr ""
+
+#: indexpage.module:145
+msgid "published"
+msgstr ""
+
+#: indexpage.module:161
+msgid "This content type uses these options: !opts."
+msgstr ""
+
+#: indexpage.module:167
+msgid "Alphabetical index"
+msgstr ""
+
+#: indexpage.module:168
+msgid "Click a letter to see the titles of content beginning with that letter."
+msgstr ""
+
+#: indexpage.module:184
+msgid "all"
+msgstr ""
+
+#: indexpage.module:197
+msgid "Show the content this user contributed"
+msgstr ""
+
+#: indexpage.module:201
+msgid "User Name"
+msgstr ""
+
+#: indexpage.module:201
+msgid "Count"
+msgstr ""
+
+#: indexpage.module:203
+msgid "Users who have created !name content"
+msgstr ""
+
+#: indexpage.module:204
+msgid "User names link to the user profile; the counts link to a list of titles by that user."
+msgstr ""
+
+#: indexpage.module:240
+msgid "Category"
+msgstr ""
+
+#: indexpage.module:241
+msgid "Description"
+msgstr ""
+
+#: indexpage.module:248
+msgid "None found"
+msgstr ""
+
+#: indexpage.module:251
+msgid "List by !s Categories"
+msgstr ""
+
+#: indexpage.module:252
+msgid "Terms (categories) that have content will link to a list of titles tagged with that term."
+msgstr ""
+
+#: indexpage.module:280
+msgid "There are !count !type nodes improperly classified in %vocs."
+msgstr ""
+
+#: indexpage.module:286
+msgid "Operations"
+msgstr ""
+
+#: indexpage.module:291
+msgid "Create a new entry"
+msgstr ""
+
+#: indexpage.module:293
+msgid "Create a new !type node."
+msgstr ""
+
+#: indexpage.module:300
+msgid "Edit !type"
+msgstr ""
+
+#: indexpage.module:302
+msgid "Edit the !type content type"
+msgstr ""
+
+#: indexpage.module:310
+msgid "Edit !type vocabulary"
+msgstr ""
+
+#: indexpage.module:312
+msgid "Edit the !type vocabulary."
+msgstr ""
+
+#: indexpage.module:320
+msgid "Indexpage settings"
+msgstr ""
+
+#: indexpage.module:322
+msgid "Change the Indexpage settings"
+msgstr ""
+
+#: indexpage.module:387
+msgid "no terms"
+msgstr ""
+
+#: indexpage.module:389
+msgid "!type nodes classified with !term"
+msgstr ""
+
+#: indexpage.module:397
+msgid "All !type nodes"
+msgstr ""
+
+#: indexpage.module:404
+msgid "!type nodes beginning with non-alphabetical"
+msgstr ""
+
+#: indexpage.module:412
+msgid "!type nodes created by %user"
+msgstr ""
+
+#: indexpage.module:419
+msgid "!type nodes beginning with \"!term\""
+msgstr ""
+
+#: indexpage.module:431
+msgid "Title"
+msgstr ""
+
+#: indexpage.module:432
+msgid "Type"
+msgstr ""
+
+#: indexpage.module:435
+msgid "Authors / Editors"
+msgstr ""
+
+#: indexpage.module:437
+msgid "Created"
+msgstr ""
+
+#: indexpage.module:438
+msgid "Updated"
+msgstr ""
+
+#: indexpage.module:505
+msgid "- none -"
+msgstr ""
+
+#: indexpage.module:537
+msgid "There are no results."
+msgstr ""
+
+#: indexpage.module:153
+msgid "There is one !type node"
+msgid_plural "There are @count !type nodes"
+msgstr[0] ""
+msgstr[1] ""
+
+#: indexpage.module:156
+msgid ", of which one is unpublished."
+msgid_plural ", of which @count are unpublished."
+msgstr[0] ""
+msgstr[1] ""
+
+#: indexpage.module:266
+msgid "There is one unclassified !type node."
+msgid_plural "There are @count unclassified !type nodes."
+msgstr[0] ""
+msgstr[1] ""
+
+#: indexpage.module:54
+msgid "access indexpage"
+msgstr ""
+
+#: indexpage.module:64
+msgid "Index page"
+msgstr ""
+
+#: indexpage.module:72 indexpage.info:0
+msgid "IndexPage"
+msgstr ""
+
+#: indexpage.module:73
+msgid "IndexPage settings."
+msgstr ""
+
+#: indexpage.module:0
+msgid "indexpage"
+msgstr ""
+
+#: indexpage.info:0
+msgid "This module displays customizables index pages for each node type, with alphabetical and taxonomy filters."
+msgstr ""
+

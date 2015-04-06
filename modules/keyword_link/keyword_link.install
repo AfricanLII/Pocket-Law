@@ -1,0 +1,63 @@
+<?php
+/**
+ * @file
+ * A module that allows you to define keyword/link pairs.
+ */
+
+/**
+ * Implementation of hook_schema().wid keyword link attributes
+ */
+function keyword_link_schema() {
+  $schema['keyword_link'] = array(
+    'module' => 'Keyword Link',
+    'description' => t('Store keyword and link.'),
+    'fields' => array(
+      'wid' => array(
+        'description' => t('ID of the keyword and link.'),
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'disp-width' => '10',
+        ),
+      'keyword' => array(
+        'description' => t('Keyword.'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE),
+      'link' => array(
+        'description' => t('Link.'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE),
+      'attributes' => array(
+        'description' => t('Attributes of keyword.'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE),
+      ),
+    'primary key' => array('wid'),
+    );
+
+  return $schema;
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function keyword_link_install() {
+  $result = drupal_install_schema('keyword_link');
+
+  if (count($result) > 0) {
+    drupal_set_message(t('Install successfully. You can to go to the <a href="!settings">settings page now</a>.', array('!settings' => url('admin/settings/keyword_link'))));
+  }
+  else {
+    drupal_set_message(t('Keyword_link table creation failed. Please "uninstall" the module and retry.'));
+  }
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function keyword_link_uninstall() {
+  drupal_uninstall_schema('keyword_link');
+}
